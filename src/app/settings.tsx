@@ -2,6 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -12,6 +14,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import {
+  checkAppUpdate,
+  CURRENT_BUILD_NUMBER,
+  CURRENT_VERSION,
+  downloadAndInstallApk,
+  type UpdateInfo,
+} from '../lib/updater';
 import type { ThemeMode } from '../store/useAppStore';
 import { useTheme } from '../theme/useTheme';
 
@@ -24,6 +33,9 @@ export default function SettingsScreen() {
   const [hdVideo, setHdVideo] = useState(true);
   const [cacheSize, setCacheSize] = useState('38.6 MB');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -39,6 +51,32 @@ export default function SettingsScreen() {
     }
     setCacheSize('0 B');
     showToast('缓存清理成功');
+  };
+
+  const handleCheckUpdate = async () => {
+    if (checkingUpdate) return;
+    setCheckingUpdate(true);
+    try {
+      const info = await checkAppUpdate();
+      if (info.hasUpdate) {
+        setUpdateInfo(info);
+        setShowUpdateModal(true);
+      } else {
+        showToast(`当前已是最新版本 (v${CURRENT_VERSION})`);
+      }
+    } catch {
+      showToast('检查更新失败，请稍后重试');
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
+  const handleConfirmDownload = async () => {
+    setShowUpdateModal(false);
+    showToast('已唤起浏览器下载 APK 安装包');
+    if (updateInfo?.downloadUrl) {
+      await downloadAndInstallApk(updateInfo.downloadUrl);
+    }
   };
 
   return (
@@ -228,16 +266,35 @@ export default function SettingsScreen() {
           >
             <View style={styles.settingRow}>
               <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>当前版本</Text>
-              <Text style={[styles.rowValue, { color: colors.textTertiary }]}>v1.0.0 (Build 57)</Text>
+              <Text style={[styles.rowValue, { color: colors.textTertiary }]}>
+                v{CURRENT_VERSION} (Build {CURRENT_BUILD_NUMBER})
+              </Text>
             </View>
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
             <Pressable
               style={styles.settingRowPressable}
-              onPress={() => showToast('当前已是最新版本')}
+              onPress={handleCheckUpdate}
+              disabled={checkingUpdate}
               accessibilityRole="button"
             >
               <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>检查更新</Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+              <View style={styles.rowRight}>
+                {checkingUpdate ? (
+                  <>
+                    <ActivityIndicator size="small" color={colors.brand} />
+                    <Text style={[styles.rowValue, { color: colors.textTertiary, marginLeft: 6 }]}>
+                      正在检查...
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <View style={[styles.updateBadge, { backgroundColor: colors.brand }]}>
+                      <Text style={styles.updateBadgeText}>NEW</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+                  </>
+                )}
+              </View>
             </Pressable>
           </View>
         </View>
@@ -251,6 +308,105 @@ export default function SettingsScreen() {
           <Text style={[styles.logoutText, { color: colors.brand }]}>退出登录</Text>
         </Pressable>
       </ScrollView>
+
+      {/* 版本更新弹窗 */}
+      <Modal
+        visible={showUpdateModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowUpdateModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.cardBorder,
+              },
+            ]}
+          >
+            {/* 弹窗头部图标与标题 */}
+            <View style={styles.modalHeader}>
+              <View style={[styles.modalIconBox, { backgroundColor: colors.brand + '15' }]}>
+                <Ionicons name="cloud-download-outline" size={32} color={colors.brand} />
+              </View>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>发现新版本</Text>
+              <View style={[styles.versionPill, { backgroundColor: colors.brand + '20' }]}>
+                <Text style={[styles.versionPillText, { color: colors.brand }]}>
+                  v{updateInfo?.latestVersion || '最新版'}
+                </Text>
+              </View>
+            </View>
+
+            {/* 版本大小与时间 */}
+            <View style={styles.modalMetaRow}>
+              {updateInfo?.apkSize ? (
+                <View style={styles.metaItem}>
+                  <Ionicons name="cube-outline" size={14} color={colors.textTertiary} />
+                  <Text style={[styles.metaText, { color: colors.textTertiary }]}>
+                    大小：{updateInfo.apkSize}
+                  </Text>
+                </View>
+              ) : null}
+              {updateInfo?.publishedAt ? (
+                <View style={styles.metaItem}>
+                  <Ionicons name="time-outline" size={14} color={colors.textTertiary} />
+                  <Text style={[styles.metaText, { color: colors.textTertiary }]}>
+                    更新于：{updateInfo.publishedAt}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+
+            {/* 更新内容说明卡片 */}
+            <View
+              style={[
+                styles.notesContainer,
+                {
+                  backgroundColor: colors.surfaceMuted,
+                  borderColor: colors.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.notesHeader, { color: colors.textPrimary }]}>更新内容：</Text>
+              <ScrollView style={styles.notesScroll} showsVerticalScrollIndicator={true}>
+                <Text style={[styles.notesText, { color: colors.textSecondary }]}>
+                  {updateInfo?.releaseNotes || '优化系统体验，修复已知问题并提升稳定性。'}
+                </Text>
+              </ScrollView>
+            </View>
+
+            {/* 底部按钮栏 */}
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[
+                  styles.cancelBtn,
+                  {
+                    borderColor: colors.cardBorder,
+                    backgroundColor: colors.surfaceMuted,
+                  },
+                ]}
+                onPress={() => setShowUpdateModal(false)}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.cancelBtnText, { color: colors.textSecondary }]}>
+                  稍后更新
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.confirmBtn, { backgroundColor: colors.brand }]}
+                onPress={handleConfirmDownload}
+                accessibilityRole="button"
+              >
+                <Ionicons name="download-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.confirmBtnText}>立即下载安装</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* 提示 Toast */}
       {toastMessage ? (
@@ -586,6 +742,130 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  updateBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginRight: 4,
+  },
+  updateBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 22,
+    borderWidth: 1,
+    paddingTop: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  versionPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  versionPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  modalMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 14,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
+    fontSize: 12,
+  },
+  notesContainer: {
+    width: '100%',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 20,
+  },
+  notesHeader: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  notesScroll: {
+    maxHeight: 140,
+  },
+  notesText: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  confirmBtn: {
+    flex: 1.5,
+    flexDirection: 'row',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
   toastContainer: {
     position: 'absolute',
     left: 0,
@@ -606,3 +886,4 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
