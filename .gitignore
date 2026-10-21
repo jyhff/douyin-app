@@ -58,3 +58,10 @@ LICENSE
 # literal `node_modules` directory, so anything merely *starting* with that name
 # still gets compiled and linted — keep them out of the repo and out of the build.
 node_modules.*/
+
+# Local tools and logs
+cloudflared.exe
+ninja-latest/
+ninja-win.zip
+*.log
+admin/*.apk

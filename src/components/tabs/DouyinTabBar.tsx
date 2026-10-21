@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, TAB_BAR_HEIGHT } from '../../theme/tokens';
 
+import { useTheme } from '../../theme/useTheme';
+
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 interface TabSpec {
@@ -28,7 +30,7 @@ const CREATE_SLOT_AFTER = 'friends';
 const UNREAD_BADGES: Record<string, number> = { inbox: 7 };
 
 /** Douyin's offset red/cyan square with a white plus on top. */
-function CreateButton({ onPress }: { onPress: () => void }) {
+function CreateButton({ onPress, isDark }: { onPress: () => void; isDark: boolean }) {
   return (
     <Pressable
       onPress={onPress}
@@ -38,20 +40,24 @@ function CreateButton({ onPress }: { onPress: () => void }) {
     >
       <View style={[styles.createPlate, styles.createPlateCyan]} />
       <View style={[styles.createPlate, styles.createPlateRed]} />
-      <View style={[styles.createPlate, styles.createPlateWhite]}>
-        <Ionicons name="add" size={22} color="#000" />
+      <View style={[styles.createPlate, isDark ? styles.createPlateWhite : styles.createPlateDark]}>
+        <Ionicons name="add" size={22} color={isDark ? '#000' : '#fff'} />
       </View>
     </Pressable>
   );
 }
 
-/** Custom bottom bar: black chrome, text-only labels, centred create button. */
+/** Custom bottom bar: responsive theme chrome, text-only labels, centred create button. */
 export function DouyinTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  // The create action lives outside the tab navigator, so it routes through the
-  // root stack rather than `navigation`.
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const activeRoute = state.routes[state.index]?.name;
+  const isIndex = activeRoute === 'index';
+
+  const barBg = isIndex || isDark ? 'rgba(0, 0, 0, 0.88)' : colors.tabBarBg;
+  const activeTextColor = isIndex || isDark ? '#FFFFFF' : colors.tabBarActive;
+  const inactiveTextColor = isIndex || isDark ? 'rgba(255, 255, 255, 0.55)' : colors.tabBarInactive;
 
   const renderTab = (spec: TabSpec) => {
     const routeIndex = state.routes.findIndex((route) => route.name === spec.route);
@@ -84,7 +90,7 @@ export function DouyinTabBar({ state, navigation }: BottomTabBarProps) {
           <Ionicons
             name={isFocused ? spec.activeIcon : spec.icon}
             size={23}
-            color={isFocused ? colors.textPrimary : 'rgba(255, 255, 255, 0.55)'}
+            color={isFocused ? activeTextColor : inactiveTextColor}
           />
           {badge ? (
             <View style={styles.badge}>
@@ -92,7 +98,15 @@ export function DouyinTabBar({ state, navigation }: BottomTabBarProps) {
             </View>
           ) : null}
         </View>
-        <Text style={[styles.label, isFocused && styles.labelActive]}>{spec.label}</Text>
+        <Text
+          style={[
+            styles.label,
+            { color: inactiveTextColor },
+            isFocused && { color: activeTextColor, fontWeight: '700' },
+          ]}
+        >
+          {spec.label}
+        </Text>
       </Pressable>
     );
   };
@@ -109,13 +123,22 @@ export function DouyinTabBar({ state, navigation }: BottomTabBarProps) {
     <View
       style={[
         styles.bar,
-        { height: TAB_BAR_HEIGHT + Math.max(insets.bottom, 6), paddingBottom: Math.max(insets.bottom, 6) },
+        {
+          height: TAB_BAR_HEIGHT + Math.max(insets.bottom, 6),
+          paddingBottom: Math.max(insets.bottom, 6),
+          backgroundColor: barBg,
+          borderTopWidth: !isIndex && !isDark ? StyleSheet.hairlineWidth : 0,
+          borderTopColor: colors.divider,
+        },
       ]}
     >
       {ordered.map((item) =>
         item === 'create' ? (
           <View key="create" style={styles.slot}>
-            <CreateButton onPress={() => router.push('/publish')} />
+            <CreateButton
+              onPress={() => router.push('/publish')}
+              isDark={isIndex || isDark}
+            />
           </View>
         ) : (
           <View key={item.route} style={styles.slot}>
@@ -199,5 +222,8 @@ const styles = StyleSheet.create({
   },
   createPlateWhite: {
     backgroundColor: '#FFFFFF',
+  },
+  createPlateDark: {
+    backgroundColor: '#161823',
   },
 });

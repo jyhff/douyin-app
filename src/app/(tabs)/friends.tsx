@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,25 +8,32 @@ import { MOMENTS } from '../../data/videos';
 import { formatCount } from '../../lib/format';
 import { useTabBarHeight } from '../../lib/useTabBarHeight';
 import { colors } from '../../theme/tokens';
+import { useTheme } from '../../theme/useTheme';
 import { FILL } from '../../theme/styles';
 import { Avatar } from '../../components/ui/Avatar';
 
 /** 朋友 tab: who is online, then a two-column wall of 日常 posts. */
 export default function FriendsScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useTabBarHeight();
+  const { colors } = useTheme();
 
   const header = (
     <View style={styles.headerArea}>
       <View style={styles.titleRow}>
-        <Text style={styles.title}>朋友</Text>
-        <Pressable style={styles.publish} accessibilityRole="button" accessibilityLabel="发布日常">
+        <Text style={[styles.title, { color: colors.textPrimary }]}>朋友</Text>
+        <Pressable
+          style={[styles.publish, { backgroundColor: colors.surfaceMuted }]}
+          accessibilityRole="button"
+          accessibilityLabel="发布日常"
+        >
           <Ionicons name="camera-outline" size={15} color={colors.textPrimary} />
-          <Text style={styles.publishText}>发布日常</Text>
+          <Text style={[styles.publishText, { color: colors.textPrimary }]}>发布日常</Text>
         </Pressable>
       </View>
 
-      <Text style={styles.sectionLabel}>在线好友</Text>
+      <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>在线好友 (点击发私信)</Text>
       <FlatList
         horizontal
         data={CREATORS}
@@ -33,24 +41,31 @@ export default function FriendsScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.onlineRow}
         renderItem={({ item, index }) => (
-          <Pressable style={styles.onlineItem} accessibilityRole="button" accessibilityLabel={item.name}>
+          <Pressable
+            style={styles.onlineItem}
+            onPress={() => router.push({ pathname: '/chat', params: { creatorId: item.id } })}
+            accessibilityRole="button"
+            accessibilityLabel={`发私信给 ${item.name}`}
+          >
             <View>
               <Avatar source={item.avatar} size={56} />
-              {index % 3 !== 1 ? <View style={styles.onlineDot} /> : null}
+              {index % 3 !== 1 ? (
+                <View style={[styles.onlineDot, { borderColor: colors.background }]} />
+              ) : null}
             </View>
-            <Text style={styles.onlineName} numberOfLines={1}>
+            <Text style={[styles.onlineName, { color: colors.textTertiary }]} numberOfLines={1}>
               {item.name}
             </Text>
           </Pressable>
         )}
       />
 
-      <Text style={styles.sectionLabel}>好友日常</Text>
+      <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>好友日常</Text>
     </View>
   );
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <FlatList
         data={MOMENTS}
         keyExtractor={(item) => item.id}

@@ -1,0 +1,98 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: '是否发布到 GitHub Release（手机可免解压直接下载 .apk）'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  build-apk:
+    name: 构建 Android APK
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 配置 Java JDK (v17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: 安装项目依赖
+        run: npm ci
+
+      - name: 类型检查 (Typecheck)
+        run: npm run typecheck
+
+      - name: 配置 Gradle 缓存
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: 预构建 Android 原生工程 (Expo Prebuild)
+        run: npx expo prebuild --platform android --no-install
+
+      - name: 赋予 gradlew 执行权限
+        run: chmod +x android/gradlew
+
+      - name: 构建 Android Release APK
+        run: |
+          cd android
+          ./gradlew :app:assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+
+      - name: 整理 APK 文件
+        run: |
+          mkdir -p build-output
+          # 寻找生成的 release apk 并重命名
+          APK_PATH=$(find android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -f "$APK_PATH" ]; then
+            cp "$APK_PATH" build-output/douyin-app-release.apk
+            echo "Found APK: $APK_PATH"
+          else
+            echo "Error: APK not found!"
+            exit 1
+          fi
+
+      - name: 上传构建产物 (GitHub Actions Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: douyin-app-release-apk
+          path: build-output/douyin-app-release.apk
+          retention-days: 14
+
+      - name: 发布到 GitHub Release (若为 tag 或勾选发布)
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.create_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('build-{0}', github.run_number) }}
+          name: ${{ startsWith(github.ref, 'refs/tags/v') && format('抖音 App {0}', github.ref_name) || format('抖音 App 自动构建 #{0}', github.run_number) }}
+          body: |
+            ### 📱 抖音 App 自动构建完成
+            - 构建时间: ${{ github.event.head_commit.timestamp || github.run_id }}
+            - 提交信息: ${{ github.event.head_commit.message || '手动触发构建' }}
+            - 运行编号: #${{ github.run_number }}
+            
+            **手机端可以直接点击下方 `douyin-app-release.apk` 下载安装！**
+          files: build-output/douyin-app-release.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

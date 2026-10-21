@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -16,6 +17,7 @@ import { USE_NATIVE_DRIVER } from '../../lib/animation';
 import { useAnimatedValue } from '../../lib/useAnimatedValue';
 import { useAppStore } from '../../store/useAppStore';
 import { colors } from '../../theme/tokens';
+import { useTheme } from '../../theme/useTheme';
 import { BottomSheet } from '../ui/BottomSheet';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -102,15 +104,29 @@ export function ShareSheet() {
     videoId ? Boolean(state.favoritedVideos[videoId]) : false,
   );
 
+  const router = useRouter();
+  const sendChatMessage = useAppStore((state) => state.sendChatMessage);
+
   const { height } = useWindowDimensions();
   const { message, opacity, show } = useToast();
+  const { colors } = useTheme();
 
   const video = VIDEOS.find((item) => item.id === videoId);
   const creator = video ? getCreator(video.creatorId) : null;
 
+  const handleTargetPress = (target: (typeof TARGETS)[number]) => {
+    if (target.id === 'message') {
+      closeShare();
+      sendChatMessage('u4', `[分享视频] ${creator ? `@${creator.name} 的视频` : '精彩视频'}`);
+      router.push({ pathname: '/chat', params: { creatorId: 'u4' } });
+      return;
+    }
+    show(target.toast);
+  };
+
   return (
     <BottomSheet visible={open} onClose={closeShare} height={Math.round(height * 0.4)}>
-      <Text style={styles.title} numberOfLines={1}>
+      <Text style={[styles.title, { color: colors.textTertiary }]} numberOfLines={1}>
         {creator ? `分享 @${creator.name} 的视频` : '分享'}
       </Text>
 
@@ -124,19 +140,21 @@ export function ShareSheet() {
           <Pressable
             key={target.id}
             style={styles.target}
-            onPress={() => show(target.toast)}
+            onPress={() => handleTargetPress(target)}
             accessibilityRole="button"
             accessibilityLabel={target.label}
           >
             <View style={[styles.targetIcon, { backgroundColor: target.tint }]}>
               <Ionicons name={target.icon} size={24} color="#fff" />
             </View>
-            <Text style={styles.targetLabel}>{target.label}</Text>
+            <Text style={[styles.targetLabel, { color: colors.textSecondary }]}>
+              {target.label}
+            </Text>
           </Pressable>
         ))}
       </ScrollView>
 
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
       <View style={styles.actionRow}>
         {ACTIONS.map((action) => (
@@ -160,6 +178,7 @@ export function ShareSheet() {
             <Text
               style={[
                 styles.actionLabel,
+                { color: colors.textSecondary },
                 action.id === 'favorite' && favorite && { color: '#FFC53D' },
               ]}
             >
@@ -170,12 +189,12 @@ export function ShareSheet() {
       </View>
 
       <Pressable
-        style={styles.cancel}
+        style={[styles.cancel, { borderTopColor: colors.divider }]}
         onPress={closeShare}
         accessibilityRole="button"
         accessibilityLabel="取消"
       >
-        <Text style={styles.cancelText}>取消</Text>
+        <Text style={[styles.cancelText, { color: colors.textSecondary }]}>取消</Text>
       </Pressable>
 
       {message ? (

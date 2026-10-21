@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { USE_NATIVE_DRIVER } from '../../lib/animation';
 import { useAnimatedValue } from '../../lib/useAnimatedValue';
 import { colors } from '../../theme/tokens';
+import { useTheme } from '../../theme/useTheme';
 
 interface BottomSheetProps {
   visible: boolean;
@@ -41,6 +42,7 @@ export function BottomSheet({
   dismissOnBackdrop = true,
 }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
   const translateY = useAnimatedValue(height);
   const backdrop = useAnimatedValue(0);
 
@@ -86,11 +88,20 @@ export function BottomSheet({
         <Animated.View
           style={[
             styles.sheet,
-            { height, paddingBottom: Math.max(insets.bottom, 8) },
+            {
+              height,
+              paddingBottom: Math.max(insets.bottom, 8),
+              backgroundColor: colors.surface,
+            },
             { transform: [{ translateY }] },
           ]}
         >
-          <View style={styles.grabber} />
+          <View
+            style={[
+              styles.grabber,
+              { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.22)' : 'rgba(0, 0, 0, 0.15)' },
+            ]}
+          />
           {children}
         </Animated.View>
       </KeyboardAvoidingView>

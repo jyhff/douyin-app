@@ -6,16 +6,19 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { CommentsSheet } from '../components/overlays/CommentsSheet';
 import { ShareSheet } from '../components/overlays/ShareSheet';
 import { colors } from '../theme/tokens';
+import { useTheme } from '../theme/useTheme';
 
 /**
  * Root layout. Expo Router renders `src/app` as the route tree; everything
  * else lives outside that folder.
  */
 export default function RootLayout() {
+  const { colors, statusBarStyle } = useTheme();
+
   return (
     <SafeAreaProvider>
-      <View style={styles.root}>
-        <StatusBar style="light" />
+      <View style={[styles.root, { backgroundColor: colors.background }]}>
+        <StatusBar style={statusBarStyle} />
         <Stack
           screenOptions={{
             headerShown: false,

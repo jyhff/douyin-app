@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router/js-tabs';
 
 import { DouyinTabBar } from '../../components/tabs/DouyinTabBar';
-import { colors } from '../../theme/tokens';
+import { useTheme } from '../../theme/useTheme';
 
 /**
  * Bottom tab navigator.
@@ -10,6 +10,8 @@ import { colors } from '../../theme/tokens';
  * which is what gives the home screen its edge-to-edge look.
  */
 export default function TabsLayout() {
+  const { colors } = useTheme();
+
   return (
     <Tabs
       tabBar={(props) => <DouyinTabBar {...props} />}

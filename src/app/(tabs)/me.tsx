@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +13,7 @@ import { formatCount } from '../../lib/format';
 import { useTabBarHeight } from '../../lib/useTabBarHeight';
 import { useAppStore } from '../../store/useAppStore';
 import { colors } from '../../theme/tokens';
+import { useTheme } from '../../theme/useTheme';
 import { FILL } from '../../theme/styles';
 
 type ProfileTab = 'works' | 'likes' | 'favorites';
@@ -24,8 +26,10 @@ const PROFILE_TABS: { key: ProfileTab; label: string }[] = [
 
 /** 我 tab: profile header, stats, and a three-column grid of videos. */
 export default function MeScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useTabBarHeight();
+  const { colors, isDark } = useTheme();
   const [tab, setTab] = useState<ProfileTab>('works');
 
   const likedVideos = useAppStore((state) => state.likedVideos);
@@ -41,15 +45,24 @@ export default function MeScreen() {
   const header = (
     <View>
       <LinearGradient
-        colors={['#3A1C36', '#1B1520', colors.background]}
+        colors={
+          isDark
+            ? ['#3A1C36', '#1B1520', colors.background]
+            : ['#FDE7ED', '#F0EAF5', colors.background]
+        }
         style={[styles.cover, { paddingTop: insets.top + 14 }]}
       >
         <View style={styles.coverActions}>
           <Pressable hitSlop={8} accessibilityRole="button" accessibilityLabel="二维码">
-            <Ionicons name="qr-code-outline" size={22} color="#fff" />
+            <Ionicons name="qr-code-outline" size={22} color={colors.textPrimary} />
           </Pressable>
-          <Pressable hitSlop={8} accessibilityRole="button" accessibilityLabel="设置">
-            <Ionicons name="settings-outline" size={22} color="#fff" />
+          <Pressable
+            hitSlop={8}
+            onPress={() => router.push('/settings')}
+            accessibilityRole="button"
+            accessibilityLabel="设置"
+          >
+            <Ionicons name="settings-outline" size={22} color={colors.textPrimary} />
           </Pressable>
         </View>
 
@@ -57,37 +70,50 @@ export default function MeScreen() {
           <Avatar source={CURRENT_USER.avatar} size={78} ring />
           <View style={styles.identityText}>
             <View style={styles.nameRow}>
-              <Text style={styles.name}>{CURRENT_USER.name}</Text>
+              <Text style={[styles.name, { color: colors.textPrimary }]}>{CURRENT_USER.name}</Text>
               {CURRENT_USER.verified ? (
                 <Ionicons name="checkmark-circle" size={15} color={colors.brandCyan} />
               ) : null}
             </View>
-            <Text style={styles.handle}>抖音号：{CURRENT_USER.handle}</Text>
+            <Text style={[styles.handle, { color: colors.textTertiary }]}>
+              抖音号：{CURRENT_USER.handle}
+            </Text>
           </View>
         </View>
 
-        <Text style={styles.bio}>{CURRENT_USER.bio}</Text>
+        <Text style={[styles.bio, { color: colors.textSecondary }]}>{CURRENT_USER.bio}</Text>
 
         <View style={styles.stats}>
-          <Stat value={CURRENT_USER.stats.likes} label="获赞" />
-          <Stat value={CURRENT_USER.stats.following} label="关注" />
-          <Stat value={CURRENT_USER.stats.followers} label="粉丝" />
+          <Stat value={CURRENT_USER.stats.likes} label="获赞" colors={colors} />
+          <Stat value={CURRENT_USER.stats.following} label="关注" colors={colors} />
+          <Stat value={CURRENT_USER.stats.followers} label="粉丝" colors={colors} />
         </View>
 
         <View style={styles.buttons}>
-          <Pressable style={styles.primaryButton} accessibilityRole="button">
-            <Text style={styles.primaryButtonText}>编辑资料</Text>
+          <Pressable
+            style={[styles.primaryButton, { backgroundColor: colors.surfaceMuted }]}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.primaryButtonText, { color: colors.textPrimary }]}>编辑资料</Text>
           </Pressable>
-          <Pressable style={styles.secondaryButton} accessibilityRole="button" accessibilityLabel="分享主页">
+          <Pressable
+            style={[styles.secondaryButton, { backgroundColor: colors.surfaceMuted }]}
+            accessibilityRole="button"
+            accessibilityLabel="分享主页"
+          >
             <Ionicons name="link-outline" size={17} color={colors.textPrimary} />
           </Pressable>
-          <Pressable style={styles.secondaryButton} accessibilityRole="button" accessibilityLabel="更多">
+          <Pressable
+            style={[styles.secondaryButton, { backgroundColor: colors.surfaceMuted }]}
+            accessibilityRole="button"
+            accessibilityLabel="更多"
+          >
             <Ionicons name="ellipsis-horizontal" size={17} color={colors.textPrimary} />
           </Pressable>
         </View>
       </LinearGradient>
 
-      <View style={styles.tabs}>
+      <View style={[styles.tabs, { borderBottomColor: colors.divider }]}>
         {PROFILE_TABS.map((item) => {
           const active = item.key === tab;
           return (
@@ -99,15 +125,25 @@ export default function MeScreen() {
               accessibilityLabel={item.label}
               accessibilityState={{ selected: active }}
             >
-              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{item.label}</Text>
-              {active ? <View style={styles.tabUnderline} /> : null}
+              <Text
+                style={[
+                  styles.tabLabel,
+                  { color: active ? colors.textPrimary : colors.textTertiary },
+                  active && styles.tabLabelActive,
+                ]}
+              >
+                {item.label}
+              </Text>
+              {active ? (
+                <View style={[styles.tabUnderline, { backgroundColor: colors.textPrimary }]} />
+              ) : null}
             </Pressable>
           );
         })}
       </View>
 
       {items.length === 0 ? (
-        <Text style={styles.empty}>
+        <Text style={[styles.empty, { color: colors.textTertiary }]}>
           {tab === 'likes' ? '还没有喜欢的作品' : '还没有收藏的作品'}
         </Text>
       ) : null}
@@ -115,7 +151,7 @@ export default function MeScreen() {
   );
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -126,7 +162,7 @@ export default function MeScreen() {
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
           <Pressable
-            style={styles.tile}
+            style={[styles.tile, { backgroundColor: colors.surface }]}
             onPress={() => openComments(item.id)}
             accessibilityRole="button"
             accessibilityLabel={item.caption}
@@ -143,11 +179,19 @@ export default function MeScreen() {
   );
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
+function Stat({
+  value,
+  label,
+  colors,
+}: {
+  value: number;
+  label: string;
+  colors: ReturnType<typeof useTheme>['colors'];
+}) {
   return (
     <View style={styles.stat}>
-      <Text style={styles.statValue}>{formatCount(value)}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={[styles.statValue, { color: colors.textPrimary }]}>{formatCount(value)}</Text>
+      <Text style={[styles.statLabel, { color: colors.textTertiary }]}>{label}</Text>
     </View>
   );
 }
