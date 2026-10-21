@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       create_release:
-        description: '是否发布到 GitHub Release（手机可免解压直接下载 .apk）'
+        description: '是否发布到 GitHub Release（手机免解压直接下载 .apk）'
         required: false
         type: boolean
         default: true
@@ -58,10 +58,9 @@ jobs:
           cd android
           ./gradlew :app:assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
 
-      - name: 整理 APK 文件
+      - name: 整理 APK 文件并生成 Release 信息
         run: |
           mkdir -p build-output
-          # 寻找生成的 release apk 并重命名
           APK_PATH=$(find android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
           if [ -f "$APK_PATH" ]; then
             cp "$APK_PATH" build-output/douyin-app-release.apk
@@ -71,6 +70,26 @@ jobs:
             exit 1
           fi
 
+          # 计算 Release 标签和标题，避免 YAML 表达式解析异常
+          RUN_NUM="${{ github.run_number }}"
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "RELEASE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "RELEASE_TITLE=抖音 App ${{ github.ref_name }}" >> $GITHUB_ENV
+          else
+            echo "RELEASE_TAG=v1.1.0-build-${RUN_NUM}" >> $GITHUB_ENV
+            echo "RELEASE_TITLE=抖音 App 构建第 ${RUN_NUM} 次" >> $GITHUB_ENV
+          fi
+
+          # 写入 Release 详细说明
+          cat << 'EOF' > build-output/release_notes.md
+          ### 📱 抖音 App 自动构建完成
+          
+          - **安装包**：`douyin-app-release.apk`
+          - **说明**：包含深浅色主题切换、私信聊天、评论楼中楼回复等最新功能。
+          
+          手机浏览器直接点击下方 Assets 中的 **`douyin-app-release.apk`** 即可直接下载安装！
+          EOF
+
       - name: 上传构建产物 (GitHub Actions Artifact)
         uses: actions/upload-artifact@v4
         with:
@@ -78,19 +97,13 @@ jobs:
           path: build-output/douyin-app-release.apk
           retention-days: 14
 
-      - name: 发布到 GitHub Release (若为 tag 或勾选发布)
-        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.create_release == 'true'
+      - name: 发布到 GitHub Release (供手机直接下载 APK)
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || github.event.inputs.create_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('build-{0}', github.run_number) }}
-          name: ${{ startsWith(github.ref, 'refs/tags/v') && format('抖音 App {0}', github.ref_name) || format('抖音 App 自动构建 #{0}', github.run_number) }}
-          body: |
-            ### 📱 抖音 App 自动构建完成
-            - 构建时间: ${{ github.event.head_commit.timestamp || github.run_id }}
-            - 提交信息: ${{ github.event.head_commit.message || '手动触发构建' }}
-            - 运行编号: #${{ github.run_number }}
-            
-            **手机端可以直接点击下方 `douyin-app-release.apk` 下载安装！**
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_TITLE }}
+          body_path: build-output/release_notes.md
           files: build-output/douyin-app-release.apk
           draft: false
           prerelease: false
