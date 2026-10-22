@@ -66,6 +66,12 @@ interface AppState {
   addComment: (videoId: string, text: string, replyToCommentId?: string) => void;
   /** Delete a comment */
   deleteComment: (videoId: string, commentId: string) => void;
+
+  /** 当前安装/已生效的版本号与构建号 */
+  installedVersion: string;
+  installedBuildNumber: number;
+  /** 应用新版本增量更新 */
+  applyAppUpdate: (newVersion: string, newBuildNumber?: number) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -85,6 +91,14 @@ export const useAppStore = create<AppState>()(
       chatMessages: INITIAL_MESSAGES,
       conversations: CONVERSATIONS,
       customComments: {},
+      installedVersion: '1.1.0',
+      installedBuildNumber: 2,
+
+      applyAppUpdate: (newVersion, newBuildNumber) =>
+        set((state) => ({
+          installedVersion: newVersion,
+          installedBuildNumber: newBuildNumber ?? (state.installedBuildNumber + 1),
+        })),
 
       toggleLike: (videoId) =>
         set((state) => ({

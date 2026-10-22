@@ -8,7 +8,9 @@ export type UpdateType = 'incremental' | 'full';
 export interface UpdateInfo {
   hasUpdate: boolean;
   currentVersion: string;
+  currentBuildNumber: number;
   latestVersion: string;
+  latestBuildNumber: number;
   releaseTitle: string;
   releaseNotes: string;
   downloadUrl: string;
@@ -27,7 +29,10 @@ const RELEASES_PAGE_URL = `https://github.com/${GITHUB_REPO}/releases/latest`;
 /**
  * 检查最新版本及增量更新补丁
  */
-export async function checkAppUpdate(): Promise<UpdateInfo> {
+export async function checkAppUpdate(
+  currentVer: string = CURRENT_VERSION,
+  currentBuild: number = CURRENT_BUILD_NUMBER,
+): Promise<UpdateInfo> {
   const defaultNotes = `1. 新增：全局头像点击直接进入创作者个人主页
 2. 新增：用户主页作品网格浏览、实时关注状态同步与一键私信
 3. 新增：应用内免跳转自动下载与增量热更新（秒级安装生效）
@@ -65,12 +70,18 @@ export async function checkAppUpdate(): Promise<UpdateInfo> {
         }
       }
 
-      const hasUpdate = isNewerVersion(tagName, CURRENT_VERSION);
+      const { hasUpdate, latestVer, latestBuild } = compareVersions(
+        tagName,
+        currentVer,
+        currentBuild,
+      );
 
       return {
         hasUpdate,
-        currentVersion: CURRENT_VERSION,
-        latestVersion: tagName.replace(/^v/, '') || '1.1.1',
+        currentVersion: currentVer,
+        currentBuildNumber: currentBuild,
+        latestVersion: latestVer,
+        latestBuildNumber: latestBuild,
         releaseTitle,
         releaseNotes,
         downloadUrl,
@@ -84,10 +95,17 @@ export async function checkAppUpdate(): Promise<UpdateInfo> {
     // 降级容错
   }
 
+  // 默认最新目标是 1.1.1 (Build 3)
+  const targetVer = '1.1.1';
+  const targetBuild = Math.max(currentBuild + 1, 3);
+  const hasUpdate = currentBuild < targetBuild || currentVer !== targetVer;
+
   return {
-    hasUpdate: true,
-    currentVersion: CURRENT_VERSION,
-    latestVersion: '1.1.1-hotfix',
+    hasUpdate,
+    currentVersion: currentVer,
+    currentBuildNumber: currentBuild,
+    latestVersion: targetVer,
+    latestBuildNumber: targetBuild,
     releaseTitle: '抖音 App 增量热更正式版',
     releaseNotes: defaultNotes,
     downloadUrl: APK_LATEST_DOWNLOAD_URL,
@@ -99,17 +117,37 @@ export async function checkAppUpdate(): Promise<UpdateInfo> {
 }
 
 /**
- * 比较远端版本与当前版本
+ * 比较远端版本与当前已安装版本
  */
-function isNewerVersion(remoteTag: string, current: string): boolean {
-  if (!remoteTag) return false;
-  const cleanRemote = remoteTag.replace(/^v/, '').trim();
-  const cleanCurrent = current.replace(/^v/, '').trim();
-
-  if (cleanRemote.includes('build-') || cleanRemote.includes('hotfix')) {
-    return true;
+function compareVersions(
+  remoteTag: string,
+  currentVer: string,
+  currentBuild: number,
+): { hasUpdate: boolean; latestVer: string; latestBuild: number } {
+  if (!remoteTag) {
+    return { hasUpdate: false, latestVer: currentVer, latestBuild: currentBuild };
   }
-  return cleanRemote !== cleanCurrent;
+
+  const clean = remoteTag.replace(/^v/, '').trim();
+  // 解析 tag 里的 build 序号，例如 1.1.0-build-2 或 1.1.0-build-3
+  const buildMatch = clean.match(/build-(\d+)/i);
+  let latestBuild = currentBuild + 1;
+  let latestVer = clean.split('-')[0] || currentVer;
+
+  if (buildMatch && buildMatch[1]) {
+    latestBuild = parseInt(buildMatch[1], 10);
+  }
+
+  // 如果 tag 包含了更高版本号，例如 1.1.1
+  const hasUpdate =
+    latestBuild > currentBuild ||
+    clean !== currentVer;
+
+  return {
+    hasUpdate,
+    latestVer: latestVer || '1.1.1',
+    latestBuild,
+  };
 }
 
 function formatDate(dateStr: string): string {

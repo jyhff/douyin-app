@@ -16,8 +16,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   checkAppUpdate,
-  CURRENT_BUILD_NUMBER,
-  CURRENT_VERSION,
   downloadFullApkInApp,
   downloadIncrementalPatchInApp,
   installDownloadedUpdate,
@@ -26,12 +24,18 @@ import {
   type UpdateType,
 } from '../lib/updater';
 import type { ThemeMode } from '../store/useAppStore';
+import { useAppStore } from '../store/useAppStore';
 import { useTheme } from '../theme/useTheme';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors, themeMode, setThemeMode, resolvedTheme } = useTheme();
+
+  // 从全局持久化状态获取已安装生效的版本号
+  const installedVersion = useAppStore((state) => state.installedVersion);
+  const installedBuildNumber = useAppStore((state) => state.installedBuildNumber);
+  const applyAppUpdate = useAppStore((state) => state.applyAppUpdate);
 
   const [autoplay, setAutoplay] = useState(true);
   const [hdVideo, setHdVideo] = useState(true);
@@ -67,7 +71,7 @@ export default function SettingsScreen() {
     if (checkingUpdate) return;
     setCheckingUpdate(true);
     try {
-      const info = await checkAppUpdate();
+      const info = await checkAppUpdate(installedVersion, installedBuildNumber);
       if (info.hasUpdate) {
         setUpdateInfo(info);
         setIsDownloading(false);
@@ -76,7 +80,7 @@ export default function SettingsScreen() {
         setUpdateMode('incremental');
         setShowUpdateModal(true);
       } else {
-        showToast(`当前已是最新版本 (v${CURRENT_VERSION})`);
+        showToast(`当前已是最新版本 (v${installedVersion} · Build ${installedBuildNumber})`);
       }
     } catch {
       showToast('检查更新失败，请稍后重试');
@@ -116,17 +120,23 @@ export default function SettingsScreen() {
   };
 
   const handleApplyUpdate = async () => {
+    const targetVer = updateInfo?.latestVersion || '1.1.1';
+    const targetBuild = updateInfo?.latestBuildNumber || (installedBuildNumber + 1);
+
     if (updateMode === 'incremental') {
-      showToast('⚡ 增量补丁已生效，版本已更新至最新！');
+      applyAppUpdate(targetVer, targetBuild);
+      showToast(`⚡ 增量补丁已生效！已升级至 v${targetVer} (Build ${targetBuild})`);
       setShowUpdateModal(false);
       setIsDownloading(false);
       setUpdateReady(false);
     } else {
+      applyAppUpdate(targetVer, targetBuild);
       showToast('已唤起系统安装器');
       await installDownloadedUpdate('full', updateInfo?.downloadUrl);
       setShowUpdateModal(false);
     }
   };
+
 
 
   return (
@@ -316,9 +326,16 @@ export default function SettingsScreen() {
           >
             <View style={styles.settingRow}>
               <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>当前版本</Text>
-              <Text style={[styles.rowValue, { color: colors.textTertiary }]}>
-                v{CURRENT_VERSION} (Build {CURRENT_BUILD_NUMBER})
-              </Text>
+              <View style={styles.rowRight}>
+                <Text style={[styles.rowValue, { color: colors.textTertiary }]}>
+                  v{installedVersion} (Build {installedBuildNumber})
+                </Text>
+                {installedBuildNumber >= 3 ? (
+                  <View style={[styles.updateBadge, { backgroundColor: '#52C41A', marginLeft: 4 }]}>
+                    <Text style={styles.updateBadgeText}>最新</Text>
+                  </View>
+                ) : null}
+              </View>
             </View>
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
             <Pressable
@@ -338,9 +355,15 @@ export default function SettingsScreen() {
                   </>
                 ) : (
                   <>
-                    <View style={[styles.updateBadge, { backgroundColor: colors.brand }]}>
-                      <Text style={styles.updateBadgeText}>NEW</Text>
-                    </View>
+                    {installedBuildNumber < 3 ? (
+                      <View style={[styles.updateBadge, { backgroundColor: colors.brand }]}>
+                        <Text style={styles.updateBadgeText}>NEW</Text>
+                      </View>
+                    ) : (
+                      <Text style={[styles.rowValue, { color: colors.textTertiary, marginRight: 2 }]}>
+                        已是最新
+                      </Text>
+                    )}
                     <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
                   </>
                 )}
