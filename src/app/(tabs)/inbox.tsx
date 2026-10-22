@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Avatar } from '../../components/ui/Avatar';
+import { Avatar, openUserProfile } from '../../components/ui/Avatar';
 import { SOCIAL_NOTIFICATIONS, type NotificationItem } from '../../data/chat';
 import { INBOX_SHORTCUTS } from '../../data/conversations';
 import { getCreator } from '../../data/creators';
@@ -127,7 +127,12 @@ export default function InboxScreen() {
               accessibilityLabel={`与 ${creator.name} 的对话`}
             >
               <View>
-                <Avatar source={creator.avatar} size={50} />
+                <Avatar
+                  source={creator.avatar}
+                  size={50}
+                  onPress={() => openUserProfile(router, creator.id)}
+                  accessibilityLabel={`进入 ${creator.name} 的主页`}
+                />
                 {item.unread > 0 ? (
                   <View style={styles.unread}>
                     <Text style={styles.unreadText}>
@@ -209,16 +214,27 @@ export default function InboxScreen() {
                   <Pressable
                     onPress={() => {
                       setActiveNoticeType(null);
-                      router.push({ pathname: '/chat', params: { creatorId: item.creatorId } });
+                      openUserProfile(router, item.creatorId);
                     }}
+                    hitSlop={4}
+                    accessibilityRole="button"
+                    accessibilityLabel={`进入 ${creator.name} 的主页`}
                   >
                     <Avatar source={creator.avatar} size={44} />
                   </Pressable>
 
                   <View style={styles.noticeBody}>
-                    <Text style={[styles.noticeName, { color: colors.textPrimary }]}>
-                      {creator.name}
-                    </Text>
+                    <Pressable
+                      onPress={() => {
+                        setActiveNoticeType(null);
+                        openUserProfile(router, item.creatorId);
+                      }}
+                      hitSlop={4}
+                    >
+                      <Text style={[styles.noticeName, { color: colors.textPrimary }]}>
+                        {creator.name}
+                      </Text>
+                    </Pressable>
                     <Text style={[styles.noticeAction, { color: colors.textSecondary }]}>
                       {item.content}
                     </Text>

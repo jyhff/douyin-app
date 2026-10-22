@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Creator, Video } from '../../data/types';
 import { useTabBarHeight } from '../../lib/useTabBarHeight';
 import { colors } from '../../theme/tokens';
+import { openUserProfile } from '../ui/Avatar';
 import { Marquee } from '../ui/Marquee';
 
 interface CaptionBlockProps {
@@ -21,6 +23,7 @@ export function CaptionBlock({
   expanded,
   onToggleExpanded,
 }: CaptionBlockProps) {
+  const router = useRouter();
   const tabBarHeight = useTabBarHeight();
 
   return (
@@ -32,7 +35,14 @@ export function CaptionBlock({
         </View>
       ) : null}
 
-      <Text style={styles.handle}>@{creator.name}</Text>
+      <Pressable
+        onPress={() => openUserProfile(router, creator.id)}
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel={`进入 ${creator.name} 的主页`}
+      >
+        <Text style={styles.handle}>@{creator.name}</Text>
+      </Pressable>
 
       <Pressable onPress={onToggleExpanded} accessibilityRole="button">
         <Text style={styles.caption} numberOfLines={expanded ? undefined : 2}>

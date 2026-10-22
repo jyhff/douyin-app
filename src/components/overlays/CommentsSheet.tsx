@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
@@ -18,7 +19,7 @@ import { formatCount } from '../../lib/format';
 import { useAppStore } from '../../store/useAppStore';
 import { colors } from '../../theme/tokens';
 import { useTheme } from '../../theme/useTheme';
-import { Avatar } from '../ui/Avatar';
+import { Avatar, openUserProfile } from '../ui/Avatar';
 import { BottomSheet } from '../ui/BottomSheet';
 
 /** Share of the screen height the sheet occupies when open. */
@@ -31,6 +32,7 @@ interface CommentRowProps {
   onToggleLike: (id: string) => void;
   onReply: (commentId: string, authorName: string) => void;
   onDelete?: (commentId: string) => void;
+  onGoProfile: (creatorId: string) => void;
   colors: ReturnType<typeof useTheme>['colors'];
 }
 
@@ -40,6 +42,7 @@ function CommentRow({
   onToggleLike,
   onReply,
   onDelete,
+  onGoProfile,
   colors,
 }: CommentRowProps) {
   const author = getCreator(comment.authorId);
@@ -51,10 +54,17 @@ function CommentRow({
 
   return (
     <View style={styles.row}>
-      <Avatar source={author.avatar} size={36} />
+      <Avatar
+        source={author.avatar}
+        size={36}
+        onPress={() => onGoProfile(author.id)}
+        accessibilityLabel={`进入 ${author.name} 的主页`}
+      />
       <View style={styles.rowBody}>
         <View style={styles.rowMeta}>
-          <Text style={[styles.rowName, { color: colors.textTertiary }]}>{author.name}</Text>
+          <Pressable hitSlop={4} onPress={() => onGoProfile(author.id)}>
+            <Text style={[styles.rowName, { color: colors.textTertiary }]}>{author.name}</Text>
+          </Pressable>
           {comment.isPinned ? <Text style={styles.pinned}>作者置顶</Text> : null}
           {isMe ? <Text style={[styles.pinned, { color: colors.brandCyan, borderColor: colors.brandCyan }]}>我的</Text> : null}
         </View>
@@ -92,7 +102,10 @@ function CommentRow({
                   style={styles.replyItem}
                 >
                   <Text style={[styles.replyText, { color: colors.textSecondary }]}>
-                    <Text style={[styles.replyName, { color: colors.textTertiary }]}>
+                    <Text
+                      style={[styles.replyName, { color: colors.textTertiary }]}
+                      onPress={() => onGoProfile(replyAuthor.id)}
+                    >
                       {replyAuthor.name}：
                     </Text>
                     {reply.text}
@@ -110,6 +123,7 @@ function CommentRow({
           </View>
         ) : null}
       </View>
+
 
       <Pressable
         onPress={() => onToggleLike(comment.id)}
@@ -142,6 +156,12 @@ export function CommentsSheet() {
   const deleteComment = useAppStore((state) => state.deleteComment);
 
   const { colors } = useTheme();
+  const router = useRouter();
+
+  const handleGoProfile = (targetId: string) => {
+    closeComments();
+    openUserProfile(router, targetId);
+  };
 
   const { height } = useWindowDimensions();
   const sheetHeight = Math.round(height * SHEET_RATIO);
@@ -214,6 +234,7 @@ export function CommentsSheet() {
             onToggleLike={toggleCommentLike}
             onReply={handleReply}
             onDelete={contentId ? (id) => deleteComment(contentId, id) : undefined}
+            onGoProfile={handleGoProfile}
             colors={colors}
           />
         )}

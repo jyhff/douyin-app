@@ -101,7 +101,13 @@ export function ActionRail({
   return (
     <View style={[styles.rail, { bottom: tabBarHeight + 74 }]}>
       <View style={styles.avatarBlock}>
-        <Avatar source={creator.avatar} size={46} ring />
+        <Avatar
+          source={creator.avatar}
+          size={46}
+          ring
+          creatorId={creator.id}
+          accessibilityLabel={`进入 ${creator.name} 的主页`}
+        />
         <Pressable
           onPress={onFollow}
           hitSlop={8}

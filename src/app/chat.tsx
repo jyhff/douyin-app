@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Avatar } from '../components/ui/Avatar';
+import { Avatar, openUserProfile } from '../components/ui/Avatar';
 import { CREATOR_AUTOREPLIES, type ChatMessage } from '../data/chat';
 import { CURRENT_USER, getCreator } from '../data/creators';
 import { useAppStore } from '../store/useAppStore';
@@ -112,20 +112,28 @@ export default function ChatScreen() {
           <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
         </Pressable>
 
-        <View style={styles.headerTitleWrap}>
+        <Pressable
+          style={styles.headerTitleWrap}
+          onPress={() => openUserProfile(router, creator.id)}
+          accessibilityRole="button"
+          accessibilityLabel={`进入 ${creator.name} 的主页`}
+        >
           <View style={styles.headerAvatarWrap}>
             <Avatar source={creator.avatar} size={34} />
             <View style={[styles.onlineDot, { borderColor: colors.surface }]} />
           </View>
           <View style={styles.headerNameWrap}>
-            <Text style={[styles.headerName, { color: colors.textPrimary }]} numberOfLines={1}>
-              {creator.name}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={[styles.headerName, { color: colors.textPrimary }]} numberOfLines={1}>
+                {creator.name}
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.textTertiary} />
+            </View>
             <Text style={[styles.headerStatus, { color: isTyping ? colors.brand : colors.textTertiary }]}>
-              {isTyping ? '正在输入...' : '在线'}
+              {isTyping ? '正在输入...' : '在线 · 点击查看主页'}
             </Text>
           </View>
-        </View>
+        </Pressable>
 
         <View style={styles.headerRightActions}>
           <Pressable
@@ -169,8 +177,20 @@ export default function ChatScreen() {
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
           ListHeaderComponent={
             <View style={styles.chatIntro}>
-              <Avatar source={creator.avatar} size={64} />
-              <Text style={[styles.introName, { color: colors.textPrimary }]}>{creator.name}</Text>
+              <Avatar
+                source={creator.avatar}
+                size={64}
+                creatorId={creator.id}
+                accessibilityLabel={`进入 ${creator.name} 的主页`}
+              />
+              <Pressable
+                onPress={() => openUserProfile(router, creator.id)}
+                hitSlop={6}
+                style={{ marginTop: 6 }}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.introName, { color: colors.textPrimary }]}>{creator.name}</Text>
+              </Pressable>
               <Text style={[styles.introBio, { color: colors.textTertiary }]}>
                 {creator.bio || `抖音号：${creator.handle}`}
               </Text>
@@ -197,7 +217,14 @@ export default function ChatScreen() {
                 ) : null}
 
                 <View style={[styles.msgRow, isMe ? styles.msgRowMe : styles.msgRowOther]}>
-                  {!isMe ? <Avatar source={creator.avatar} size={36} /> : null}
+                  {!isMe ? (
+                    <Avatar
+                      source={creator.avatar}
+                      size={36}
+                      creatorId={creator.id}
+                      accessibilityLabel={`进入 ${creator.name} 的主页`}
+                    />
+                  ) : null}
 
                   <View
                     style={[
@@ -225,7 +252,14 @@ export default function ChatScreen() {
                     </Text>
                   </View>
 
-                  {isMe ? <Avatar source={CURRENT_USER.avatar} size={36} /> : null}
+                  {isMe ? (
+                    <Avatar
+                      source={CURRENT_USER.avatar}
+                      size={36}
+                      creatorId="me"
+                      accessibilityLabel="进入我的个人主页"
+                    />
+                  ) : null}
                 </View>
               </View>
             );

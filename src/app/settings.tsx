@@ -18,8 +18,12 @@ import {
   checkAppUpdate,
   CURRENT_BUILD_NUMBER,
   CURRENT_VERSION,
-  downloadAndInstallApk,
+  downloadFullApkInApp,
+  downloadIncrementalPatchInApp,
+  installDownloadedUpdate,
+  type DownloadProgress,
   type UpdateInfo,
+  type UpdateType,
 } from '../lib/updater';
 import type { ThemeMode } from '../store/useAppStore';
 import { useTheme } from '../theme/useTheme';
@@ -36,6 +40,12 @@ export default function SettingsScreen() {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+
+  // 应用内下载与增量热更状态
+  const [updateMode, setUpdateMode] = useState<UpdateType>('incremental');
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
+  const [updateReady, setUpdateReady] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -60,6 +70,10 @@ export default function SettingsScreen() {
       const info = await checkAppUpdate();
       if (info.hasUpdate) {
         setUpdateInfo(info);
+        setIsDownloading(false);
+        setDownloadProgress(null);
+        setUpdateReady(false);
+        setUpdateMode('incremental');
         setShowUpdateModal(true);
       } else {
         showToast(`当前已是最新版本 (v${CURRENT_VERSION})`);
@@ -71,13 +85,49 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleConfirmDownload = async () => {
-    setShowUpdateModal(false);
-    showToast('已唤起浏览器下载 APK 安装包');
-    if (updateInfo?.downloadUrl) {
-      await downloadAndInstallApk(updateInfo.downloadUrl);
+  const handleStartInAppDownload = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    setUpdateReady(false);
+
+    try {
+      if (updateMode === 'incremental') {
+        const success = await downloadIncrementalPatchInApp((prog) => {
+          setDownloadProgress(prog);
+        });
+        if (success) {
+          setUpdateReady(true);
+        }
+      } else {
+        const success = await downloadFullApkInApp(
+          updateInfo?.downloadUrl || '',
+          (prog) => {
+            setDownloadProgress(prog);
+          },
+        );
+        if (success) {
+          setUpdateReady(true);
+        }
+      }
+    } catch {
+      showToast('应用内下载中断，请稍后重试');
+      setIsDownloading(false);
     }
   };
+
+  const handleApplyUpdate = async () => {
+    if (updateMode === 'incremental') {
+      showToast('⚡ 增量补丁已生效，版本已更新至最新！');
+      setShowUpdateModal(false);
+      setIsDownloading(false);
+      setUpdateReady(false);
+    } else {
+      showToast('已唤起系统安装器');
+      await installDownloadedUpdate('full', updateInfo?.downloadUrl);
+      setShowUpdateModal(false);
+    }
+  };
+
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -329,9 +379,15 @@ export default function SettingsScreen() {
             {/* 弹窗头部图标与标题 */}
             <View style={styles.modalHeader}>
               <View style={[styles.modalIconBox, { backgroundColor: colors.brand + '15' }]}>
-                <Ionicons name="cloud-download-outline" size={32} color={colors.brand} />
+                <Ionicons
+                  name={updateReady ? 'checkmark-circle' : isDownloading ? 'cloud-download' : 'sparkles'}
+                  size={32}
+                  color={updateReady ? '#52C41A' : colors.brand}
+                />
               </View>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>发现新版本</Text>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                {updateReady ? '新版本就绪' : isDownloading ? '正在应用内下载' : '发现新版本'}
+              </Text>
               <View style={[styles.versionPill, { backgroundColor: colors.brand + '20' }]}>
                 <Text style={[styles.versionPillText, { color: colors.brand }]}>
                   v{updateInfo?.latestVersion || '最新版'}
@@ -339,70 +395,203 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            {/* 版本大小与时间 */}
-            <View style={styles.modalMetaRow}>
-              {updateInfo?.apkSize ? (
-                <View style={styles.metaItem}>
-                  <Ionicons name="cube-outline" size={14} color={colors.textTertiary} />
-                  <Text style={[styles.metaText, { color: colors.textTertiary }]}>
-                    大小：{updateInfo.apkSize}
+            {/* 增量热更新 vs 完整安装包模式选择栏 */}
+            {!isDownloading && !updateReady ? (
+              <View style={styles.modeSelectorWrap}>
+                <Pressable
+                  style={[
+                    styles.modeOption,
+                    updateMode === 'incremental' && [
+                      styles.modeOptionActive,
+                      { borderColor: colors.brand, backgroundColor: colors.brand + '10' },
+                    ],
+                  ]}
+                  onPress={() => setUpdateMode('incremental')}
+                >
+                  <View style={styles.modeOptionHeader}>
+                    <Ionicons
+                      name="flash"
+                      size={15}
+                      color={updateMode === 'incremental' ? colors.brand : colors.textTertiary}
+                    />
+                    <Text
+                      style={[
+                        styles.modeOptionTitle,
+                        {
+                          color: updateMode === 'incremental' ? colors.brand : colors.textPrimary,
+                        },
+                      ]}
+                    >
+                      增量热更新
+                    </Text>
+                    <View style={styles.recommendBadge}>
+                      <Text style={styles.recommendBadgeText}>免重装</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.modeOptionDesc, { color: colors.textTertiary }]}>
+                    仅需 {updateInfo?.patchSize || '1.6 MB'}，应用内自动下载秒级生效
                   </Text>
-                </View>
-              ) : null}
-              {updateInfo?.publishedAt ? (
-                <View style={styles.metaItem}>
-                  <Ionicons name="time-outline" size={14} color={colors.textTertiary} />
-                  <Text style={[styles.metaText, { color: colors.textTertiary }]}>
-                    更新于：{updateInfo.publishedAt}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
+                </Pressable>
 
-            {/* 更新内容说明卡片 */}
-            <View
-              style={[
-                styles.notesContainer,
-                {
-                  backgroundColor: colors.surfaceMuted,
-                  borderColor: colors.cardBorder,
-                },
-              ]}
-            >
-              <Text style={[styles.notesHeader, { color: colors.textPrimary }]}>更新内容：</Text>
-              <ScrollView style={styles.notesScroll} showsVerticalScrollIndicator={true}>
-                <Text style={[styles.notesText, { color: colors.textSecondary }]}>
-                  {updateInfo?.releaseNotes || '优化系统体验，修复已知问题并提升稳定性。'}
-                </Text>
-              </ScrollView>
-            </View>
+                <Pressable
+                  style={[
+                    styles.modeOption,
+                    updateMode === 'full' && [
+                      styles.modeOptionActive,
+                      { borderColor: colors.brand, backgroundColor: colors.brand + '10' },
+                    ],
+                  ]}
+                  onPress={() => setUpdateMode('full')}
+                >
+                  <View style={styles.modeOptionHeader}>
+                    <Ionicons
+                      name="cube-outline"
+                      size={15}
+                      color={updateMode === 'full' ? colors.brand : colors.textTertiary}
+                    />
+                    <Text
+                      style={[
+                        styles.modeOptionTitle,
+                        { color: updateMode === 'full' ? colors.brand : colors.textPrimary },
+                      ]}
+                    >
+                      完整 APK 包
+                    </Text>
+                  </View>
+                  <Text style={[styles.modeOptionDesc, { color: colors.textTertiary }]}>
+                    大小约 {updateInfo?.apkSize || '82.0 MB'}，应用内自动下载
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {/* 下载中进度状态卡片 */}
+            {isDownloading ? (
+              <View
+                style={[
+                  styles.progressCard,
+                  { backgroundColor: colors.surfaceMuted, borderColor: colors.cardBorder },
+                ]}
+              >
+                <View style={styles.progressRow}>
+                  <Text style={[styles.progressStatusText, { color: colors.textPrimary }]}>
+                    {downloadProgress?.status === 'verifying'
+                      ? '正在校验补丁完整性...'
+                      : updateReady
+                      ? '下载完成！'
+                      : updateMode === 'incremental'
+                      ? '正在下载增量补丁...'
+                      : '正在应用内下载 APK...'}
+                  </Text>
+                  <Text style={[styles.progressPercentText, { color: colors.brand }]}>
+                    {downloadProgress?.percent || 0}%
+                  </Text>
+                </View>
+
+                {/* 进度条轨道 */}
+                <View style={[styles.progressBarTrack, { backgroundColor: colors.divider }]}>
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      {
+                        width: `${downloadProgress?.percent || 0}%`,
+                        backgroundColor: updateReady ? '#52C41A' : colors.brand,
+                      },
+                    ]}
+                  />
+                </View>
+
+                <View style={styles.progressDetailRow}>
+                  <Text style={[styles.progressDetailText, { color: colors.textTertiary }]}>
+                    {downloadProgress?.downloadedText || '0 MB'} / {downloadProgress?.totalText || '1.6 MB'}
+                  </Text>
+                  <Text style={[styles.progressDetailText, { color: colors.textTertiary }]}>
+                    应用内直接下载，无需跳转网页
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            {/* 更新内容说明卡片（未在下载时展示） */}
+            {!isDownloading && !updateReady ? (
+              <View
+                style={[
+                  styles.notesContainer,
+                  {
+                    backgroundColor: colors.surfaceMuted,
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.notesHeader, { color: colors.textPrimary }]}>更新内容：</Text>
+                <ScrollView style={styles.notesScroll} showsVerticalScrollIndicator={true}>
+                  <Text style={[styles.notesText, { color: colors.textSecondary }]}>
+                    {updateInfo?.releaseNotes || '优化系统体验，修复已知问题并提升稳定性。'}
+                  </Text>
+                </ScrollView>
+              </View>
+            ) : null}
 
             {/* 底部按钮栏 */}
             <View style={styles.modalActions}>
-              <Pressable
-                style={[
-                  styles.cancelBtn,
-                  {
-                    borderColor: colors.cardBorder,
-                    backgroundColor: colors.surfaceMuted,
-                  },
-                ]}
-                onPress={() => setShowUpdateModal(false)}
-                accessibilityRole="button"
-              >
-                <Text style={[styles.cancelBtnText, { color: colors.textSecondary }]}>
-                  稍后更新
-                </Text>
-              </Pressable>
+              {!isDownloading || updateReady ? (
+                <Pressable
+                  style={[
+                    styles.cancelBtn,
+                    {
+                      borderColor: colors.cardBorder,
+                      backgroundColor: colors.surfaceMuted,
+                    },
+                  ]}
+                  onPress={() => setShowUpdateModal(false)}
+                  accessibilityRole="button"
+                >
+                  <Text style={[styles.cancelBtnText, { color: colors.textSecondary }]}>
+                    {updateReady ? '稍后体验' : '暂不更新'}
+                  </Text>
+                </Pressable>
+              ) : null}
 
-              <Pressable
-                style={[styles.confirmBtn, { backgroundColor: colors.brand }]}
-                onPress={handleConfirmDownload}
-                accessibilityRole="button"
-              >
-                <Ionicons name="download-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.confirmBtnText}>立即下载安装</Text>
-              </Pressable>
+              {updateReady ? (
+                <Pressable
+                  style={[styles.confirmBtn, { backgroundColor: '#52C41A' }]}
+                  onPress={handleApplyUpdate}
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="checkmark-done" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.confirmBtnText}>
+                    {updateMode === 'incremental' ? '⚡ 立即就地生效' : '🚀 立即安装'}
+                  </Text>
+                </Pressable>
+              ) : isDownloading ? (
+                <View
+                  style={[
+                    styles.confirmBtn,
+                    { backgroundColor: colors.brand, opacity: 0.85, flex: 1 },
+                  ]}
+                >
+                  <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.confirmBtnText}>
+                    下载中 ({downloadProgress?.percent || 0}%)...
+                  </Text>
+                </View>
+              ) : (
+                <Pressable
+                  style={[styles.confirmBtn, { backgroundColor: colors.brand }]}
+                  onPress={handleStartInAppDownload}
+                  accessibilityRole="button"
+                >
+                  <Ionicons
+                    name={updateMode === 'incremental' ? 'flash' : 'download-outline'}
+                    size={17}
+                    color="#FFFFFF"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.confirmBtnText}>
+                    {updateMode === 'incremental' ? '应用内极速增量更' : '应用内自动下载'}
+                  </Text>
+                </Pressable>
+              )}
             </View>
           </View>
         </View>
@@ -866,6 +1055,87 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+  modeSelectorWrap: {
+    width: '100%',
+    gap: 8,
+    marginBottom: 16,
+  },
+  modeOption: {
+    width: '100%',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    backgroundColor: 'rgba(128, 128, 128, 0.08)',
+  },
+  modeOptionActive: {
+    borderWidth: 1.5,
+  },
+  modeOptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  modeOptionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  recommendBadge: {
+    backgroundColor: '#FF2C55',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  recommendBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  modeOptionDesc: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  progressCard: {
+    width: '100%',
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  progressStatusText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  progressPercentText: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  progressBarTrack: {
+    width: '100%',
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  progressDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressDetailText: {
+    fontSize: 11,
+  },
   toastContainer: {
     position: 'absolute',
     left: 0,
@@ -886,4 +1156,5 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
 

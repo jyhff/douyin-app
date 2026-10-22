@@ -10,7 +10,7 @@ import { useTabBarHeight } from '../../lib/useTabBarHeight';
 import { colors } from '../../theme/tokens';
 import { useTheme } from '../../theme/useTheme';
 import { FILL } from '../../theme/styles';
-import { Avatar } from '../../components/ui/Avatar';
+import { Avatar, openUserProfile } from '../../components/ui/Avatar';
 
 /** 朋友 tab: who is online, then a two-column wall of 日常 posts. */
 export default function FriendsScreen() {
@@ -43,12 +43,12 @@ export default function FriendsScreen() {
         renderItem={({ item, index }) => (
           <Pressable
             style={styles.onlineItem}
-            onPress={() => router.push({ pathname: '/chat', params: { creatorId: item.id } })}
+            onPress={() => openUserProfile(router, item.id)}
             accessibilityRole="button"
-            accessibilityLabel={`发私信给 ${item.name}`}
+            accessibilityLabel={`进入 ${item.name} 的主页`}
           >
             <View>
-              <Avatar source={item.avatar} size={56} />
+              <Avatar source={item.avatar} size={56} creatorId={item.id} />
               {index % 3 !== 1 ? (
                 <View style={[styles.onlineDot, { borderColor: colors.background }]} />
               ) : null}
@@ -84,10 +84,21 @@ export default function FriendsScreen() {
               <Image source={item.thumbnail} style={styles.cardImage} resizeMode="cover" />
               <View style={styles.cardScrim} />
               <View style={styles.cardFooter}>
-                <Avatar source={creator.avatar} size={22} />
-                <Text style={styles.cardName} numberOfLines={1}>
-                  {creator.name}
-                </Text>
+                <Avatar
+                  source={creator.avatar}
+                  size={22}
+                  creatorId={creator.id}
+                  accessibilityLabel={`进入 ${creator.name} 的主页`}
+                />
+                <Pressable
+                  onPress={() => openUserProfile(router, creator.id)}
+                  hitSlop={6}
+                  style={{ flex: 1 }}
+                >
+                  <Text style={styles.cardName} numberOfLines={1}>
+                    {creator.name}
+                  </Text>
+                </Pressable>
                 <View style={styles.cardLikes}>
                   <Ionicons name="heart" size={12} color="#fff" />
                   <Text style={styles.cardLikesText}>{formatCount(item.likes)}</Text>

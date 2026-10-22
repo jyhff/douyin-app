@@ -1,22 +1,64 @@
-import { Image, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import type { ImageSourcePropType, StyleProp, ViewStyle } from 'react-native';
 
 import { colors } from '../../theme/tokens';
 
-interface AvatarProps {
+export interface AvatarProps {
   source: ImageSourcePropType;
   size?: number;
   /** Draws the white ring used on the profile and follow buttons. */
   ring?: boolean;
   style?: StyleProp<ViewStyle>;
+  /** 创作者/用户ID，若传入且未指定onPress，点击自动跳转对应个人主页 */
+  creatorId?: string;
+  /** 自定义点击事件 */
+  onPress?: () => void;
+  accessibilityLabel?: string;
 }
 
-/** Circular avatar with an optional ring. */
-export function Avatar({ source, size = 44, ring = false, style }: AvatarProps) {
+/**
+ * 统一跳转至用户主页或我的主页
+ */
+export function openUserProfile(
+  router: ReturnType<typeof useRouter>,
+  creatorId?: string,
+) {
+  if (!creatorId || creatorId === 'me') {
+    router.push('/(tabs)/me');
+  } else {
+    router.push({
+      pathname: '/user/[id]',
+      params: { id: creatorId },
+    });
+  }
+}
+
+/** Circular avatar with an optional ring and tap-to-profile navigation. */
+export function Avatar({
+  source,
+  size = 44,
+  ring = false,
+  style,
+  creatorId,
+  onPress,
+  accessibilityLabel,
+}: AvatarProps) {
+  const router = useRouter();
   const ringWidth = ring ? 2 : 0;
   const outer = size + ringWidth * 2 + (ring ? 4 : 0);
 
-  return (
+  const handlePress = () => {
+    if (onPress) {
+      onPress();
+    } else if (creatorId) {
+      openUserProfile(router, creatorId);
+    }
+  };
+
+  const isClickable = Boolean(onPress || creatorId);
+
+  const content = (
     <View
       style={[
         styles.wrapper,
@@ -32,6 +74,21 @@ export function Avatar({ source, size = 44, ring = false, style }: AvatarProps) 
       />
     </View>
   );
+
+  if (isClickable) {
+    return (
+      <Pressable
+        onPress={handlePress}
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel || '用户头像'}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return content;
 }
 
 const styles = StyleSheet.create({
