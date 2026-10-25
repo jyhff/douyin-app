@@ -38,8 +38,6 @@ export default function HomeScreen() {
       <FeedHeader
         tab={feedTab}
         onChangeTab={setFeedTab}
-        muted={muted}
-        onToggleMute={toggleMute}
       />
     </View>
   );

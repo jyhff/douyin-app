@@ -8,8 +8,8 @@ import { colors } from '../../theme/tokens';
 interface FeedHeaderProps {
   tab: FeedTab;
   onChangeTab: (tab: FeedTab) => void;
-  muted: boolean;
-  onToggleMute: () => void;
+  muted?: boolean;
+  onToggleMute?: () => void;
 }
 
 const TABS: { key: FeedTab; label: string }[] = [
@@ -17,8 +17,8 @@ const TABS: { key: FeedTab; label: string }[] = [
   { key: 'recommended', label: '推荐' },
 ];
 
-/** Floating header over the feed: 关注 / 推荐 plus search and volume. */
-export function FeedHeader({ tab, onChangeTab, muted, onToggleMute }: FeedHeaderProps) {
+/** Floating header over the feed: 关注 / 推荐 plus search. */
+export function FeedHeader({ tab, onChangeTab }: FeedHeaderProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -46,19 +46,6 @@ export function FeedHeader({ tab, onChangeTab, muted, onToggleMute }: FeedHeader
       </View>
 
       <View style={styles.actions}>
-        <Pressable
-          onPress={onToggleMute}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={muted ? '打开声音' : '静音'}
-        >
-          <Ionicons
-            name={muted ? 'volume-mute' : 'volume-high'}
-            size={21}
-            color="#fff"
-            style={styles.icon}
-          />
-        </Pressable>
         <Pressable hitSlop={8} accessibilityRole="button" accessibilityLabel="搜索">
           <Ionicons name="search" size={24} color="#fff" style={styles.icon} />
         </Pressable>
