@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,6 +21,7 @@ const TABS: { key: FeedTab; label: string }[] = [
 /** Floating header over the feed: 关注 / 推荐 plus search. */
 export function FeedHeader({ tab, onChangeTab }: FeedHeaderProps) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   return (
     <View style={[styles.header, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
@@ -46,7 +48,13 @@ export function FeedHeader({ tab, onChangeTab }: FeedHeaderProps) {
       </View>
 
       <View style={styles.actions}>
-        <Pressable hitSlop={8} accessibilityRole="button" accessibilityLabel="搜索">
+        <Pressable
+          onPress={() => router.push('/search')}
+          style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="搜索"
+        >
           <Ionicons name="search" size={24} color="#fff" style={styles.icon} />
         </Pressable>
       </View>
