@@ -34,9 +34,13 @@ function CreateButton({ onPress, isDark }: { onPress: () => void; isDark: boolea
   return (
     <Pressable
       onPress={onPress}
-      style={styles.createWrapper}
+      style={({ pressed }) => [
+        styles.createWrapper,
+        pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] },
+      ]}
       accessibilityRole="button"
       accessibilityLabel="发布视频"
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
       <View style={[styles.createPlate, styles.createPlateCyan]} />
       <View style={[styles.createPlate, styles.createPlateRed]} />
@@ -81,15 +85,19 @@ export function DouyinTabBar({ state, navigation }: BottomTabBarProps) {
     return (
       <Pressable
         onPress={onPress}
-        style={styles.tab}
+        style={({ pressed }) => [
+          styles.tab,
+          pressed && { opacity: 0.7 },
+        ]}
         accessibilityRole="tab"
         accessibilityState={{ selected: isFocused }}
         accessibilityLabel={spec.label}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <View>
+        <View style={styles.iconWrapper}>
           <Ionicons
             name={isFocused ? spec.activeIcon : spec.icon}
-            size={23}
+            size={22}
             color={isFocused ? activeTextColor : inactiveTextColor}
           />
           {badge ? (
@@ -150,6 +158,7 @@ export function DouyinTabBar({ state, navigation }: BottomTabBarProps) {
   );
 }
 
+const TAB_TOUCH_SIZE = 48;
 const CREATE_SIZE = 30;
 
 const styles = StyleSheet.create({
@@ -159,23 +168,34 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingTop: 7,
+    alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.88)',
   },
   /** Five equal-width slots across the bar. */
   slot: {
     flex: 1,
+    height: TAB_BAR_HEIGHT,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   tab: {
+    width: TAB_TOUCH_SIZE,
+    height: TAB_TOUCH_SIZE,
     alignItems: 'center',
-    gap: 2,
+    justifyContent: 'center',
+    borderRadius: 8,
+  },
+  iconWrapper: {
+    width: 26,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   label: {
     fontSize: 10,
     fontWeight: '500',
     color: 'rgba(255, 255, 255, 0.55)',
+    marginTop: 1,
   },
   labelActive: {
     color: colors.textPrimary,
@@ -199,8 +219,8 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   createWrapper: {
-    width: CREATE_SIZE + 4,
-    height: CREATE_SIZE,
+    width: TAB_TOUCH_SIZE,
+    height: TAB_TOUCH_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
   },
