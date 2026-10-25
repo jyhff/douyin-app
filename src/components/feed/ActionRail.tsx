@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Creator, Video } from '../../data/types';
@@ -20,10 +21,19 @@ interface MetricButtonProps {
   /** Colour used when `active` — Douyin uses red for likes, amber for saves. */
   tone?: string;
   onPress: () => void;
+  onLongPress?: () => void;
 }
 
 /** One icon-over-count stack in the right-hand rail. */
-function MetricButton({ icon, label, a11yLabel, active = false, tone, onPress }: MetricButtonProps) {
+function MetricButton({
+  icon,
+  label,
+  a11yLabel,
+  active = false,
+  tone,
+  onPress,
+  onLongPress,
+}: MetricButtonProps) {
   const scale = useAnimatedValue(1);
 
   const handlePress = () => {
@@ -48,6 +58,8 @@ function MetricButton({ icon, label, a11yLabel, active = false, tone, onPress }:
     <Animated.View style={{ transform: [{ scale }] }}>
       <Pressable
         onPress={handlePress}
+        onLongPress={onLongPress}
+        delayLongPress={550}
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={a11yLabel}
@@ -75,6 +87,7 @@ interface ActionRailProps {
   likeCount: number;
   spinning: boolean;
   onLike: () => void;
+  onLongPressLike?: () => void;
   onComment: () => void;
   onFavorite: () => void;
   onShare: () => void;
@@ -91,11 +104,13 @@ export function ActionRail({
   likeCount,
   spinning,
   onLike,
+  onLongPressLike,
   onComment,
   onFavorite,
   onShare,
   onFollow,
 }: ActionRailProps) {
+  const router = useRouter();
   const tabBarHeight = useTabBarHeight();
 
   return (
@@ -126,6 +141,7 @@ export function ActionRail({
         active={liked}
         tone={colors.brand}
         onPress={onLike}
+        onLongPress={onLongPressLike}
       />
       <MetricButton
         icon="chatbubble-ellipses-outline"
@@ -148,7 +164,23 @@ export function ActionRail({
         onPress={onShare}
       />
 
-      <MusicDisc artwork={creator.avatar} spinning={spinning} />
+      <Pressable
+        onPress={() =>
+          router.push({
+            pathname: '/music',
+            params: {
+              name: video.music,
+              creatorName: creator.name,
+              creatorId: creator.id,
+            },
+          })
+        }
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel={`查看音乐 ${video.music}`}
+      >
+        <MusicDisc artwork={creator.avatar} spinning={spinning} />
+      </Pressable>
     </View>
   );
 }

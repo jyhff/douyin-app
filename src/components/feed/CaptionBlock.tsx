@@ -56,10 +56,25 @@ export function CaptionBlock({
         ) : null}
       </Pressable>
 
-      <View style={styles.musicRow}>
+      <Pressable
+        style={styles.musicRow}
+        onPress={() =>
+          router.push({
+            pathname: '/music',
+            params: {
+              name: video.music,
+              creatorName: creator.name,
+              creatorId: creator.id,
+            },
+          })
+        }
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`进入音乐 ${video.music}`}
+      >
         <Ionicons name="musical-note" size={13} color={colors.textPrimary} />
         <Marquee text={video.music} containerStyle={styles.marquee} />
-      </View>
+      </Pressable>
     </View>
   );
 }

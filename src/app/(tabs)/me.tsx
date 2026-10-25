@@ -2,7 +2,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '../../components/ui/Avatar';
@@ -32,6 +41,34 @@ export default function MeScreen() {
   const { colors, isDark } = useTheme();
   const [tab, setTab] = useState<ProfileTab>('works');
 
+  // 用户个人资料状态
+  const [profile, setProfile] = useState(CURRENT_USER);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editName, setEditName] = useState(CURRENT_USER.name);
+  const [editBio, setEditBio] = useState(CURRENT_USER.bio);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => {
+      setToastMsg(null);
+    }, 1600);
+  };
+
+  const handleSaveProfile = () => {
+    if (!editName.trim()) {
+      showToast('昵称不能为空');
+      return;
+    }
+    setProfile((prev) => ({
+      ...prev,
+      name: editName.trim(),
+      bio: editBio.trim() || '记录一下，随便拍拍 📷',
+    }));
+    setEditModalVisible(false);
+    showToast('个人资料已保存');
+  };
+
   const likedVideos = useAppStore((state) => state.likedVideos);
   const favoritedVideos = useAppStore((state) => state.favoritedVideos);
   const openComments = useAppStore((state) => state.openComments);
@@ -53,7 +90,12 @@ export default function MeScreen() {
         style={[styles.cover, { paddingTop: insets.top + 14 }]}
       >
         <View style={styles.coverActions}>
-          <Pressable hitSlop={8} accessibilityRole="button" accessibilityLabel="二维码">
+          <Pressable
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="二维码"
+            onPress={() => showToast('我的抖音码已生成')}
+          >
             <Ionicons name="qr-code-outline" size={22} color={colors.textPrimary} />
           </Pressable>
           <Pressable
@@ -67,32 +109,37 @@ export default function MeScreen() {
         </View>
 
         <View style={styles.identity}>
-          <Avatar source={CURRENT_USER.avatar} size={78} ring />
+          <Avatar source={profile.avatar} size={78} ring />
           <View style={styles.identityText}>
             <View style={styles.nameRow}>
-              <Text style={[styles.name, { color: colors.textPrimary }]}>{CURRENT_USER.name}</Text>
-              {CURRENT_USER.verified ? (
+              <Text style={[styles.name, { color: colors.textPrimary }]}>{profile.name}</Text>
+              {profile.verified ? (
                 <Ionicons name="checkmark-circle" size={15} color={colors.brandCyan} />
               ) : null}
             </View>
             <Text style={[styles.handle, { color: colors.textTertiary }]}>
-              抖音号：{CURRENT_USER.handle}
+              抖音号：{profile.handle}
             </Text>
           </View>
         </View>
 
-        <Text style={[styles.bio, { color: colors.textSecondary }]}>{CURRENT_USER.bio}</Text>
+        <Text style={[styles.bio, { color: colors.textSecondary }]}>{profile.bio}</Text>
 
         <View style={styles.stats}>
-          <Stat value={CURRENT_USER.stats.likes} label="获赞" colors={colors} />
-          <Stat value={CURRENT_USER.stats.following} label="关注" colors={colors} />
-          <Stat value={CURRENT_USER.stats.followers} label="粉丝" colors={colors} />
+          <Stat value={profile.stats.likes} label="获赞" colors={colors} />
+          <Stat value={profile.stats.following} label="关注" colors={colors} />
+          <Stat value={profile.stats.followers} label="粉丝" colors={colors} />
         </View>
 
         <View style={styles.buttons}>
           <Pressable
             style={[styles.primaryButton, { backgroundColor: colors.surfaceMuted }]}
             accessibilityRole="button"
+            onPress={() => {
+              setEditName(profile.name);
+              setEditBio(profile.bio);
+              setEditModalVisible(true);
+            }}
           >
             <Text style={[styles.primaryButtonText, { color: colors.textPrimary }]}>编辑资料</Text>
           </Pressable>
@@ -100,6 +147,7 @@ export default function MeScreen() {
             style={[styles.secondaryButton, { backgroundColor: colors.surfaceMuted }]}
             accessibilityRole="button"
             accessibilityLabel="分享主页"
+            onPress={() => showToast('个人主页链接已复制')}
           >
             <Ionicons name="link-outline" size={17} color={colors.textPrimary} />
           </Pressable>
@@ -107,6 +155,7 @@ export default function MeScreen() {
             style={[styles.secondaryButton, { backgroundColor: colors.surfaceMuted }]}
             accessibilityRole="button"
             accessibilityLabel="更多"
+            onPress={() => router.push('/settings')}
           >
             <Ionicons name="ellipsis-horizontal" size={17} color={colors.textPrimary} />
           </Pressable>
@@ -175,6 +224,98 @@ export default function MeScreen() {
           </Pressable>
         )}
       />
+
+      {/* 编辑个人资料弹窗 */}
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setEditModalVisible(false)} />
+          <View
+            style={[
+              styles.editModalCard,
+              {
+                backgroundColor: isDark ? '#1C1C24' : '#FFFFFF',
+                paddingBottom: insets.bottom + 20,
+              },
+            ]}
+          >
+            <View style={styles.editModalHeader}>
+              <Pressable
+                onPress={() => setEditModalVisible(false)}
+                hitSlop={8}
+                style={styles.editModalCancel}
+              >
+                <Text style={[styles.cancelText, { color: colors.textTertiary }]}>取消</Text>
+              </Pressable>
+              <Text style={[styles.editModalTitle, { color: colors.textPrimary }]}>编辑个人资料</Text>
+              <Pressable
+                onPress={handleSaveProfile}
+                hitSlop={8}
+                style={[styles.editModalSave, { backgroundColor: colors.brand }]}
+              >
+                <Text style={styles.saveBtnText}>保存</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.editForm}>
+              <View style={styles.editAvatarArea}>
+                <Avatar source={profile.avatar} size={72} ring />
+                <Text style={[styles.changeAvatarTip, { color: colors.brand }]}>点击更换头像</Text>
+              </View>
+
+              <View style={styles.formItem}>
+                <Text style={[styles.formLabel, { color: colors.textSecondary }]}>昵称</Text>
+                <TextInput
+                  style={[
+                    styles.formInput,
+                    {
+                      backgroundColor: colors.surfaceMuted,
+                      color: colors.textPrimary,
+                    },
+                  ]}
+                  value={editName}
+                  onChangeText={setEditName}
+                  maxLength={20}
+                  placeholder="请输入昵称"
+                  placeholderTextColor={colors.textTertiary}
+                />
+              </View>
+
+              <View style={styles.formItem}>
+                <Text style={[styles.formLabel, { color: colors.textSecondary }]}>个性签名</Text>
+                <TextInput
+                  style={[
+                    styles.formTextarea,
+                    {
+                      backgroundColor: colors.surfaceMuted,
+                      color: colors.textPrimary,
+                    },
+                  ]}
+                  value={editBio}
+                  onChangeText={setEditBio}
+                  maxLength={60}
+                  multiline
+                  placeholder="填写有趣简洁的签名介绍自己吧"
+                  placeholderTextColor={colors.textTertiary}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 提示 Toast */}
+      {toastMsg ? (
+        <View style={styles.toastWrap} pointerEvents="none">
+          <View style={styles.toastBox}>
+            <Text style={styles.toastText}>{toastMsg}</Text>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -343,5 +484,96 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#fff',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  editModalCard: {
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  editModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  editModalCancel: {
+    padding: 6,
+  },
+  cancelText: {
+    fontSize: 15,
+  },
+  editModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  editModalSave: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  saveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  editForm: {
+    paddingVertical: 18,
+    gap: 16,
+  },
+  editAvatarArea: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  changeAvatarTip: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  formItem: {
+    gap: 6,
+  },
+  formLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  formInput: {
+    height: 42,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 14,
+  },
+  formTextarea: {
+    height: 76,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    textAlignVertical: 'top',
+  },
+  toastWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 110,
+    alignItems: 'center',
+  },
+  toastBox: {
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  toastText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

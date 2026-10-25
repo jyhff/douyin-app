@@ -13,6 +13,7 @@ interface VideoLayerProps {
   /** User tapped to pause. */
   paused: boolean;
   muted: boolean;
+  playbackRate?: number;
   /** Written directly, so playback progress never re-renders React. */
   progress: Animated.Value;
   onReady: () => void;
@@ -29,6 +30,7 @@ export function VideoLayer({
   isActive,
   paused,
   muted,
+  playbackRate = 1.0,
   progress,
   onReady,
 }: VideoLayerProps) {
@@ -48,6 +50,13 @@ export function VideoLayer({
     // eslint-disable-next-line react-hooks/immutability
     player.muted = muted;
   }, [player, muted]);
+
+  useEffect(() => {
+    if (playbackRate) {
+      // eslint-disable-next-line react-hooks/immutability
+      player.playbackRate = playbackRate;
+    }
+  }, [player, playbackRate]);
 
   useEffect(() => {
     if (isActive && !paused) {
