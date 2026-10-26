@@ -14,20 +14,58 @@ interface CaptionBlockProps {
   /** Caption is clamped until the user taps "展开". */
   expanded: boolean;
   onToggleExpanded: () => void;
+  danmakuEnabled?: boolean;
+  onToggleDanmaku?: () => void;
+  onOpenDanmakuInput?: () => void;
 }
 
-/** Bottom-left overlay: handle, caption, hashtags and the music line. */
+/** Bottom-left overlay: danmaku entry, handle, caption, hashtags and the music line. */
 export function CaptionBlock({
   video,
   creator,
   expanded,
   onToggleExpanded,
+  danmakuEnabled = true,
+  onToggleDanmaku,
+  onOpenDanmakuInput,
 }: CaptionBlockProps) {
   const router = useRouter();
   const tabBarHeight = useTabBarHeight();
 
   return (
-    <View style={[styles.container, { bottom: tabBarHeight + 12 }]} pointerEvents="box-none">
+    <View style={[styles.container, { bottom: tabBarHeight + 14 }]} pointerEvents="box-none">
+      {/* 弹幕输入框和按钮：位于标题区域最上方，避免与底部进度条重合 */}
+      <View style={styles.danmakuBar} pointerEvents="box-none">
+        <Pressable
+          style={[styles.danmakuToggle, danmakuEnabled && styles.danmakuToggleActive]}
+          onPress={onToggleDanmaku}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={danmakuEnabled ? '关闭弹幕' : '开启弹幕'}
+        >
+          <Text
+            style={[
+              styles.danmakuToggleText,
+              danmakuEnabled && styles.danmakuToggleTextActive,
+            ]}
+          >
+            弹
+          </Text>
+        </Pressable>
+
+        {danmakuEnabled ? (
+          <Pressable
+            style={styles.danmakuInputBtn}
+            onPress={onOpenDanmakuInput}
+            accessibilityRole="button"
+            accessibilityLabel="发送弹幕"
+          >
+            <Ionicons name="chatbox-ellipses-outline" size={13} color="rgba(255,255,255,0.7)" />
+            <Text style={styles.danmakuInputPlaceholder}>发一条友善的弹幕吧...</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
       {video.location ? (
         <View style={styles.locationChip}>
           <Ionicons name="location-outline" size={12} color="#fff" />
@@ -84,7 +122,52 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 14,
     right: 82,
+    gap: 7,
+  },
+  danmakuBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+    alignSelf: 'flex-start',
+  },
+  danmakuToggle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  danmakuToggleActive: {
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
+  },
+  danmakuToggleText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: 'rgba(255, 255, 255, 0.65)',
+  },
+  danmakuToggleTextActive: {
+    color: '#FFFFFF',
+  },
+  danmakuInputBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.48)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+  },
+  danmakuInputPlaceholder: {
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 11,
+    fontWeight: '500',
   },
   locationChip: {
     alignSelf: 'flex-start',

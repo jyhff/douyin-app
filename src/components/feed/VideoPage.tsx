@@ -88,6 +88,7 @@ export function VideoPage({
   const [tripleBurstVisible, setTripleBurstVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [seekTarget, setSeekTarget] = useState<number | null>(null);
+  const [danmakuInputOpen, setDanmakuInputOpen] = useState(false);
 
   useEffect(() => {
     if (isActive) {
@@ -227,13 +228,11 @@ export function VideoPage({
           danmakus={danmakus}
           enabled={danmakuEnabled}
           isActive={isActive && !paused}
+          isInputModalVisible={danmakuInputOpen}
+          onCloseInputModal={() => setDanmakuInputOpen(false)}
           onSendDanmaku={(text, color) => {
             addDanmaku(video.id, text, color);
             showToast('弹幕已发送 🚀');
-          }}
-          onToggleEnabled={() => {
-            toggleDanmaku();
-            showToast(!danmakuEnabled ? '弹幕已开启' : '弹幕已关闭');
           }}
         />
       ) : null}
@@ -261,6 +260,12 @@ export function VideoPage({
             creator={creator}
             expanded={expanded}
             onToggleExpanded={() => setExpanded((value) => !value)}
+            danmakuEnabled={danmakuEnabled}
+            onToggleDanmaku={() => {
+              toggleDanmaku();
+              showToast(!danmakuEnabled ? '弹幕已开启' : '弹幕已关闭');
+            }}
+            onOpenDanmakuInput={() => setDanmakuInputOpen(true)}
           />
 
           <ActionRail

@@ -22,8 +22,9 @@ interface DanmakuOverlayProps {
   danmakus: DanmakuItem[];
   enabled: boolean;
   isActive: boolean;
+  isInputModalVisible: boolean;
+  onCloseInputModal: () => void;
   onSendDanmaku: (text: string, color?: string) => void;
-  onToggleEnabled: () => void;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -91,11 +92,11 @@ export function DanmakuOverlay({
   danmakus,
   enabled,
   isActive,
+  isInputModalVisible,
+  onCloseInputModal,
   onSendDanmaku,
-  onToggleEnabled,
 }: DanmakuOverlayProps) {
   const insets = useSafeAreaInsets();
-  const [modalVisible, setModalVisible] = useState(false);
   const [inputVal, setInputVal] = useState('');
   const [selectedColor, setSelectedColor] = useState('#FFFFFF');
 
@@ -105,7 +106,7 @@ export function DanmakuOverlay({
     if (!inputVal.trim()) return;
     onSendDanmaku(inputVal.trim(), selectedColor);
     setInputVal('');
-    setModalVisible(false);
+    onCloseInputModal();
   };
 
   return (
@@ -119,38 +120,14 @@ export function DanmakuOverlay({
         </View>
       ) : null}
 
-      {/* 底部微型弹幕操作条 */}
-      <View style={styles.bottomBar} pointerEvents="box-none">
-        <Pressable
-          style={[styles.toggleBtn, enabled && styles.toggleBtnActive]}
-          onPress={onToggleEnabled}
-          accessibilityRole="button"
-          accessibilityLabel={enabled ? '关闭弹幕' : '开启弹幕'}
-        >
-          <Text style={[styles.toggleText, enabled && styles.toggleTextActive]}>弹</Text>
-        </Pressable>
-
-        {enabled ? (
-          <Pressable
-            style={styles.openInputBtn}
-            onPress={() => setModalVisible(true)}
-            accessibilityRole="button"
-            accessibilityLabel="发送弹幕"
-          >
-            <Ionicons name="chatbox-ellipses-outline" size={14} color="rgba(255,255,255,0.7)" />
-            <Text style={styles.openInputText}>发一条弹幕吧...</Text>
-          </Pressable>
-        ) : null}
-      </View>
-
       {/* 发送弹幕输入弹窗 */}
       <Modal
-        visible={modalVisible}
+        visible={isInputModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={onCloseInputModal}
       >
-        <Pressable style={styles.modalBg} onPress={() => setModalVisible(false)}>
+        <Pressable style={styles.modalBg} onPress={onCloseInputModal}>
           <View
             style={[styles.inputCard, { paddingBottom: insets.bottom + 16 }]}
             onStartShouldSetResponder={() => true}
@@ -237,52 +214,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
-  },
-  bottomBar: {
-    position: 'absolute',
-    left: 16,
-    bottom: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  toggleBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  toggleBtnActive: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
-  },
-  toggleText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: 'rgba(255, 255, 255, 0.65)',
-  },
-  toggleTextActive: {
-    color: '#FFFFFF',
-  },
-  openInputBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  openInputText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 11,
-    fontWeight: '500',
   },
   modalBg: {
     flex: 1,
