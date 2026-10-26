@@ -17,6 +17,8 @@ interface VideoLayerProps {
   /** Written directly, so playback progress never re-renders React. */
   progress: Animated.Value;
   onReady: () => void;
+  seekTarget?: number | null;
+  onSeekComplete?: () => void;
 }
 
 /**
@@ -33,6 +35,8 @@ export function VideoLayer({
   playbackRate = 1.0,
   progress,
   onReady,
+  seekTarget,
+  onSeekComplete,
 }: VideoLayerProps) {
   const player = useVideoPlayer(source, (instance) => {
     instance.loop = true;
@@ -40,6 +44,15 @@ export function VideoLayer({
     // flooding the bridge.
     instance.timeUpdateEventInterval = 0.25;
   });
+
+  useEffect(() => {
+    if (seekTarget !== undefined && seekTarget !== null && player.duration > 0) {
+      // eslint-disable-next-line react-hooks/immutability
+      player.currentTime = seekTarget * player.duration;
+      progress.setValue(seekTarget);
+      onSeekComplete?.();
+    }
+  }, [seekTarget, player, progress, onSeekComplete]);
 
   const { status } = useEvent(player, 'statusChange', { status: player.status });
 

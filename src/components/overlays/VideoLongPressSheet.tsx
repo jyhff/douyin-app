@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useEffect } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useEffect, useRef } from 'react';
 
+import { useAnimatedValue } from '../../lib/useAnimatedValue';
 import { colors } from '../../theme/tokens';
-import { useTheme } from '../../theme/useTheme';
 
 export const PLAYBACK_RATES = [0.75, 1.0, 1.25, 1.5, 2.0] as const;
 export type PlaybackRate = (typeof PLAYBACK_RATES)[number];
@@ -32,8 +32,7 @@ export function VideoLongPressSheet({
   onClose,
 }: VideoLongPressSheetProps) {
   const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
-  const slideAnim = useRef(new Animated.Value(300)).current;
+  const slideAnim = useAnimatedValue(300);
 
   useEffect(() => {
     if (visible) {

@@ -43,11 +43,43 @@ export interface Video {
   };
   /** Location chip rendered above the caption, when present. */
   location?: string;
+  /** City name for local city feed, e.g. '北京', '上海' */
+  city?: string;
+  /** Distance for local feed, e.g. '距您 1.2km' */
+  distance?: string;
   /**
    * Set only on server-supplied videos, whose authors are not in the bundled
    * fixture table. Falls back to `getCreator(creatorId)` when absent.
    */
   creator?: Creator;
+}
+
+/** Danmaku floating comment item */
+export interface DanmakuItem {
+  id: string;
+  videoId: string;
+  text: string;
+  color?: string;
+  timeOffset?: number;
+  isSelf?: boolean;
+}
+
+/** History item for watched videos */
+export interface HistoryItem {
+  videoId: string;
+  watchedAt: number;
+}
+
+/** User profile details */
+export interface UserProfile {
+  name: string;
+  handle: string;
+  bio: string;
+  avatar: ImageSourcePropType;
+  cover?: ImageSourcePropType | string;
+  gender: string;
+  birthday: string;
+  location: string;
 }
 
 /** A comment inside the comment sheet. */

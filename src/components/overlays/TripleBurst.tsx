@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '../../theme/tokens';
+import { useAnimatedValue } from '../../lib/useAnimatedValue';
 
 const PARTICLE_COUNT = 16;
 const RADIUS = 130;
@@ -27,18 +27,15 @@ interface TripleBurstProps {
   onFinish?: () => void;
 }
 
-export function TripleBurst({ visible, onFinish }: TripleBurstProps) {
-  const anim = useRef(new Animated.Value(0)).current;
+const STATIC_PARTICLES: Particle[] = Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
+  angle: (i * 2 * Math.PI) / PARTICLE_COUNT + (Math.sin(i) * 0.2),
+  color: COLORS[i % COLORS.length],
+  size: 16 + (i % 3) * 6,
+  icon: i % 3 === 0 ? 'heart' : i % 3 === 1 ? 'star' : 'sparkles',
+}));
 
-  // 固定的粒子配置
-  const particles = useRef<Particle[]>(
-    Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
-      angle: (i * 2 * Math.PI) / PARTICLE_COUNT + (Math.random() - 0.5) * 0.4,
-      color: COLORS[i % COLORS.length],
-      size: 16 + (i % 3) * 6,
-      icon: i % 3 === 0 ? 'heart' : i % 3 === 1 ? 'star' : 'sparkles',
-    })),
-  ).current;
+export function TripleBurst({ visible, onFinish }: TripleBurstProps) {
+  const anim = useAnimatedValue(0);
 
   useEffect(() => {
     if (visible) {
@@ -72,7 +69,7 @@ export function TripleBurst({ visible, onFinish }: TripleBurstProps) {
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <View style={styles.container}>
         {/* 四散粒子 */}
-        {particles.map((p, index) => {
+        {STATIC_PARTICLES.map((p, index) => {
           const translateX = anim.interpolate({
             inputRange: [0, 1],
             outputRange: [0, Math.cos(p.angle) * RADIUS * (0.8 + (index % 3) * 0.2)],

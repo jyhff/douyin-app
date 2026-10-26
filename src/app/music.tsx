@@ -23,12 +23,13 @@ import { VIDEOS } from '../data/videos';
 import { formatCount } from '../lib/format';
 import { useRemoteFeed } from '../lib/useRemoteFeed';
 import { colors as defaultColors } from '../theme/tokens';
+import { useAnimatedValue } from '../lib/useAnimatedValue';
 import { useTheme } from '../theme/useTheme';
 
 export default function MusicDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const params = useLocalSearchParams<{
     name?: string;
     creatorName?: string;
@@ -44,7 +45,7 @@ export default function MusicDetailScreen() {
   const [previewVideo, setPreviewVideo] = useState<Video | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const rotateAnim = useAnimatedValue(0);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);

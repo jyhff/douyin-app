@@ -157,24 +157,46 @@ export default function UserProfileScreen() {
 
         {/* 获赞/关注/粉丝统计 */}
         <View style={styles.statsRow}>
-          <View style={styles.statItem}>
+          <Pressable
+            style={styles.statItem}
+            onPress={() => showToast(`共收到 ${creator.stats.likes} 次点赞`)}
+            hitSlop={6}
+          >
             <Text style={[styles.statValue, { color: colors.textPrimary }]}>
               {formatCount(creator.stats.likes)}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textTertiary }]}>获赞</Text>
-          </View>
-          <View style={styles.statItem}>
+          </Pressable>
+          <Pressable
+            style={styles.statItem}
+            onPress={() =>
+              router.push({
+                pathname: '/user/relationships',
+                params: { tab: 'following' },
+              })
+            }
+            hitSlop={6}
+          >
             <Text style={[styles.statValue, { color: colors.textPrimary }]}>
               {formatCount(creator.stats.following)}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textTertiary }]}>关注</Text>
-          </View>
-          <View style={styles.statItem}>
+          </Pressable>
+          <Pressable
+            style={styles.statItem}
+            onPress={() =>
+              router.push({
+                pathname: '/user/relationships',
+                params: { tab: 'followers' },
+              })
+            }
+            hitSlop={6}
+          >
             <Text style={[styles.statValue, { color: colors.textPrimary }]}>
               {formatCount(creator.stats.followers + (isFollowing ? 1 : 0))}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textTertiary }]}>粉丝</Text>
-          </View>
+          </Pressable>
         </View>
 
         {/* 交互按钮栏：关注 / 私信 */}
@@ -313,8 +335,10 @@ export default function UserProfileScreen() {
           <Pressable
             style={styles.gridItem}
             onPress={() => {
-              showToast(`播放视频：${item.caption.slice(0, 10)}...`);
-              router.back();
+              router.push({
+                pathname: '/feed-detail',
+                params: { initialVideoId: item.id },
+              });
             }}
           >
             <Image source={item.thumbnail} style={styles.thumbnail} resizeMode="cover" />

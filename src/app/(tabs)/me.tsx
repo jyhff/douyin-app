@@ -7,6 +7,7 @@ import {
   Image,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,7 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '../../components/ui/Avatar';
-import { CURRENT_USER } from '../../data/creators';
+import { CREATORS, CURRENT_USER } from '../../data/creators';
 import { MY_WORKS, VIDEOS } from '../../data/videos';
 import type { Video } from '../../data/types';
 import { formatCount } from '../../lib/format';
@@ -33,6 +34,11 @@ const PROFILE_TABS: { key: ProfileTab; label: string }[] = [
   { key: 'favorites', label: '收藏' },
 ];
 
+const AVATAR_PRESETS = [
+  CURRENT_USER.avatar,
+  ...CREATORS.slice(0, 4).map((c) => c.avatar),
+];
+
 /** 我 tab: profile header, stats, and a three-column grid of videos. */
 export default function MeScreen() {
   const router = useRouter();
@@ -41,11 +47,19 @@ export default function MeScreen() {
   const { colors, isDark } = useTheme();
   const [tab, setTab] = useState<ProfileTab>('works');
 
-  // 用户个人资料状态
-  const [profile, setProfile] = useState(CURRENT_USER);
+  // 用户个人资料状态来自 Store
+  const userProfile = useAppStore((state) => state.userProfile);
+  const updateUserProfile = useAppStore((state) => state.updateUserProfile);
+  const followedCreators = useAppStore((state) => state.followedCreators);
+  const likedVideos = useAppStore((state) => state.likedVideos);
+  const favoritedVideos = useAppStore((state) => state.favoritedVideos);
+
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [editName, setEditName] = useState(CURRENT_USER.name);
-  const [editBio, setEditBio] = useState(CURRENT_USER.bio);
+  const [editName, setEditName] = useState(userProfile.name);
+  const [editBio, setEditBio] = useState(userProfile.bio);
+  const [editGender, setEditGender] = useState(userProfile.gender || '保密');
+  const [editLocation, setEditLocation] = useState(userProfile.location || '北京·朝阳');
+  const [editAvatar, setEditAvatar] = useState(userProfile.avatar);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -55,29 +69,40 @@ export default function MeScreen() {
     }, 1600);
   };
 
+  const handleOpenEdit = () => {
+    setEditName(userProfile.name);
+    setEditBio(userProfile.bio);
+    setEditGender(userProfile.gender || '保密');
+    setEditLocation(userProfile.location || '北京·朝阳');
+    setEditAvatar(userProfile.avatar);
+    setEditModalVisible(true);
+  };
+
   const handleSaveProfile = () => {
     if (!editName.trim()) {
       showToast('昵称不能为空');
       return;
     }
-    setProfile((prev) => ({
-      ...prev,
+    updateUserProfile({
       name: editName.trim(),
       bio: editBio.trim() || '记录一下，随便拍拍 📷',
-    }));
+      gender: editGender,
+      location: editLocation.trim(),
+      avatar: editAvatar,
+    });
     setEditModalVisible(false);
     showToast('个人资料已保存');
   };
-
-  const likedVideos = useAppStore((state) => state.likedVideos);
-  const favoritedVideos = useAppStore((state) => state.favoritedVideos);
-  const openComments = useAppStore((state) => state.openComments);
 
   const items = useMemo<Video[]>(() => {
     if (tab === 'likes') return VIDEOS.filter((video) => likedVideos[video.id]);
     if (tab === 'favorites') return VIDEOS.filter((video) => favoritedVideos[video.id]);
     return MY_WORKS;
   }, [tab, likedVideos, favoritedVideos]);
+
+  const followingCount = useMemo(() => {
+    return Object.values(followedCreators).filter(Boolean).length;
+  }, [followedCreators]);
 
   const header = (
     <View>
@@ -90,6 +115,14 @@ export default function MeScreen() {
         style={[styles.cover, { paddingTop: insets.top + 14 }]}
       >
         <View style={styles.coverActions}>
+          <Pressable
+            hitSlop={8}
+            onPress={() => router.push('/history')}
+            accessibilityRole="button"
+            accessibilityLabel="观看历史"
+          >
+            <Ionicons name="time-outline" size={23} color={colors.textPrimary} />
+          </Pressable>
           <Pressable
             hitSlop={8}
             accessibilityRole="button"
@@ -109,37 +142,67 @@ export default function MeScreen() {
         </View>
 
         <View style={styles.identity}>
-          <Avatar source={profile.avatar} size={78} ring />
+          <Avatar source={userProfile.avatar} size={78} ring />
           <View style={styles.identityText}>
             <View style={styles.nameRow}>
-              <Text style={[styles.name, { color: colors.textPrimary }]}>{profile.name}</Text>
-              {profile.verified ? (
-                <Ionicons name="checkmark-circle" size={15} color={colors.brandCyan} />
-              ) : null}
+              <Text style={[styles.name, { color: colors.textPrimary }]}>{userProfile.name}</Text>
             </View>
             <Text style={[styles.handle, { color: colors.textTertiary }]}>
-              抖音号：{profile.handle}
+              抖音号：{userProfile.handle}
             </Text>
+            <View style={styles.tagRow}>
+              <View style={[styles.tagBadge, { backgroundColor: colors.surfaceMuted }]}>
+                <Text style={[styles.tagText, { color: colors.textSecondary }]}>
+                  {userProfile.location || '北京'}
+                </Text>
+              </View>
+              <View style={[styles.tagBadge, { backgroundColor: colors.surfaceMuted }]}>
+                <Text style={[styles.tagText, { color: colors.textSecondary }]}>
+                  {userProfile.gender || '保密'}
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
 
-        <Text style={[styles.bio, { color: colors.textSecondary }]}>{profile.bio}</Text>
+        <Text style={[styles.bio, { color: colors.textSecondary }]}>{userProfile.bio}</Text>
 
         <View style={styles.stats}>
-          <Stat value={profile.stats.likes} label="获赞" colors={colors} />
-          <Stat value={profile.stats.following} label="关注" colors={colors} />
-          <Stat value={profile.stats.followers} label="粉丝" colors={colors} />
+          <Stat
+            value={CURRENT_USER.stats.likes}
+            label="获赞"
+            colors={colors}
+            onPress={() => showToast(`共收到 ${CURRENT_USER.stats.likes} 次点赞`)}
+          />
+          <Stat
+            value={followingCount}
+            label="关注"
+            colors={colors}
+            onPress={() =>
+              router.push({
+                pathname: '/user/relationships',
+                params: { tab: 'following' },
+              })
+            }
+          />
+          <Stat
+            value={CURRENT_USER.stats.followers}
+            label="粉丝"
+            colors={colors}
+            onPress={() =>
+              router.push({
+                pathname: '/user/relationships',
+                params: { tab: 'followers' },
+              })
+            }
+          />
         </View>
 
         <View style={styles.buttons}>
           <Pressable
             style={[styles.primaryButton, { backgroundColor: colors.surfaceMuted }]}
             accessibilityRole="button"
-            onPress={() => {
-              setEditName(profile.name);
-              setEditBio(profile.bio);
-              setEditModalVisible(true);
-            }}
+            onPress={handleOpenEdit}
           >
             <Text style={[styles.primaryButtonText, { color: colors.textPrimary }]}>编辑资料</Text>
           </Pressable>
@@ -154,10 +217,10 @@ export default function MeScreen() {
           <Pressable
             style={[styles.secondaryButton, { backgroundColor: colors.surfaceMuted }]}
             accessibilityRole="button"
-            accessibilityLabel="更多"
-            onPress={() => router.push('/settings')}
+            accessibilityLabel="观看历史"
+            onPress={() => router.push('/history')}
           >
-            <Ionicons name="ellipsis-horizontal" size={17} color={colors.textPrimary} />
+            <Ionicons name="time-outline" size={17} color={colors.textPrimary} />
           </Pressable>
         </View>
       </LinearGradient>
@@ -212,7 +275,12 @@ export default function MeScreen() {
         renderItem={({ item }) => (
           <Pressable
             style={[styles.tile, { backgroundColor: colors.surface }]}
-            onPress={() => openComments(item.id)}
+            onPress={() =>
+              router.push({
+                pathname: '/feed-detail',
+                params: { initialVideoId: item.id },
+              })
+            }
             accessibilityRole="button"
             accessibilityLabel={item.caption}
           >
@@ -261,10 +329,26 @@ export default function MeScreen() {
               </Pressable>
             </View>
 
-            <View style={styles.editForm}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.editForm}>
               <View style={styles.editAvatarArea}>
-                <Avatar source={profile.avatar} size={72} ring />
-                <Text style={[styles.changeAvatarTip, { color: colors.brand }]}>点击更换头像</Text>
+                <Avatar source={editAvatar} size={72} ring />
+                <Text style={[styles.changeAvatarTip, { color: colors.textSecondary }]}>
+                  点击切换预设头像
+                </Text>
+                <View style={styles.avatarRow}>
+                  {AVATAR_PRESETS.map((av, idx) => (
+                    <Pressable
+                      key={idx}
+                      onPress={() => setEditAvatar(av)}
+                      style={[
+                        styles.avatarOption,
+                        editAvatar === av && styles.avatarOptionSelected,
+                      ]}
+                    >
+                      <Image source={av} style={styles.avatarOptionImg} />
+                    </Pressable>
+                  ))}
+                </View>
               </View>
 
               <View style={styles.formItem}>
@@ -303,7 +387,54 @@ export default function MeScreen() {
                   placeholderTextColor={colors.textTertiary}
                 />
               </View>
-            </View>
+
+              <View style={styles.formItem}>
+                <Text style={[styles.formLabel, { color: colors.textSecondary }]}>所在地</Text>
+                <TextInput
+                  style={[
+                    styles.formInput,
+                    {
+                      backgroundColor: colors.surfaceMuted,
+                      color: colors.textPrimary,
+                    },
+                  ]}
+                  value={editLocation}
+                  onChangeText={setEditLocation}
+                  maxLength={30}
+                  placeholder="例如：北京·朝阳"
+                  placeholderTextColor={colors.textTertiary}
+                />
+              </View>
+
+              <View style={styles.formItem}>
+                <Text style={[styles.formLabel, { color: colors.textSecondary }]}>性别</Text>
+                <View style={styles.genderRow}>
+                  {['保密', '男', '女'].map((g) => {
+                    const active = editGender === g;
+                    return (
+                      <Pressable
+                        key={g}
+                        style={[
+                          styles.genderChip,
+                          { backgroundColor: colors.surfaceMuted },
+                          active && styles.genderChipActive,
+                        ]}
+                        onPress={() => setEditGender(g)}
+                      >
+                        <Text
+                          style={[
+                            styles.genderText,
+                            { color: active ? '#FFFFFF' : colors.textSecondary },
+                          ]}
+                        >
+                          {g}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -324,16 +455,18 @@ function Stat({
   value,
   label,
   colors,
+  onPress,
 }: {
   value: number;
   label: string;
   colors: ReturnType<typeof useTheme>['colors'];
+  onPress?: () => void;
 }) {
   return (
-    <View style={styles.stat}>
+    <Pressable style={styles.stat} onPress={onPress} hitSlop={8}>
       <Text style={[styles.statValue, { color: colors.textPrimary }]}>{formatCount(value)}</Text>
       <Text style={[styles.statLabel, { color: colors.textTertiary }]}>{label}</Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -349,7 +482,8 @@ const styles = StyleSheet.create({
   coverActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 20,
+    alignItems: 'center',
+    gap: 18,
   },
   identity: {
     flexDirection: 'row',
@@ -359,7 +493,7 @@ const styles = StyleSheet.create({
   },
   identityText: {
     flex: 1,
-    gap: 5,
+    gap: 4,
   },
   nameRow: {
     flexDirection: 'row',
@@ -374,6 +508,20 @@ const styles = StyleSheet.create({
   handle: {
     fontSize: 12,
     color: colors.textTertiary,
+  },
+  tagRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 2,
+  },
+  tagBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  tagText: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   bio: {
     marginTop: 14,
@@ -495,6 +643,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 18,
     paddingHorizontal: 16,
     paddingTop: 16,
+    maxHeight: '85%',
   },
   editModalHeader: {
     flexDirection: 'row',
@@ -534,8 +683,29 @@ const styles = StyleSheet.create({
   },
   changeAvatarTip: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
     marginTop: 8,
+    marginBottom: 10,
+  },
+  avatarRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  avatarOption: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  avatarOptionSelected: {
+    borderColor: colors.brand,
+    transform: [{ scale: 1.1 }],
+  },
+  avatarOptionImg: {
+    width: '100%',
+    height: '100%',
   },
   formItem: {
     gap: 6,
@@ -551,12 +721,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   formTextarea: {
-    height: 76,
+    height: 72,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 14,
     textAlignVertical: 'top',
+  },
+  genderRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  genderChip: {
+    flex: 1,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderChipActive: {
+    backgroundColor: colors.brand,
+  },
+  genderText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   toastWrap: {
     position: 'absolute',

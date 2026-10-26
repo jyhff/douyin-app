@@ -4,13 +4,17 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { INITIAL_MESSAGES, type ChatMessage } from '../data/chat';
 import { CONVERSATIONS } from '../data/conversations';
-import type { Comment, Conversation, Video } from '../data/types';
+import { CURRENT_USER } from '../data/creators';
+import { INITIAL_DANMAKUS } from '../data/danmaku';
+import type { Comment, Conversation, DanmakuItem, HistoryItem, UserProfile, Video } from '../data/types';
 
 /**
- * Which feed tab is selected. `following` narrows the feed to creators the
- * user follows; `recommended` is the full list.
+ * Which feed tab is selected:
+ * `following` - videos from followed creators
+ * `city` - local city videos with distance and geolocation
+ * `recommended` - algorithmic recommendation feed
  */
-export type FeedTab = 'following' | 'recommended';
+export type FeedTab = 'following' | 'city' | 'recommended';
 export type ThemeMode = 'system' | 'dark' | 'light';
 
 interface AppState {
@@ -29,6 +33,8 @@ interface AppState {
   themeMode: ThemeMode;
   /** Selected tab on the home feed. */
   feedTab: FeedTab;
+  /** Currently selected city for city feed */
+  selectedCity: string;
 
   /** Video whose comment sheet is showing. */
   commentsVideoId: string | null;
@@ -44,6 +50,16 @@ interface AppState {
   /** Custom user comments and replies keyed by videoId */
   customComments: Record<string, Comment[]>;
 
+  /** Danmaku floating comments */
+  danmakuEnabled: boolean;
+  danmakus: Record<string, DanmakuItem[]>;
+
+  /** Watch history */
+  historyVideos: HistoryItem[];
+
+  /** User profile */
+  userProfile: UserProfile;
+
   toggleLike: (videoId: string) => void;
   toggleFavorite: (videoId: string) => void;
   toggleFollow: (creatorId: string) => void;
@@ -51,10 +67,24 @@ interface AppState {
   toggleMute: () => void;
   setThemeMode: (mode: ThemeMode) => void;
   setFeedTab: (tab: FeedTab) => void;
+  setSelectedCity: (city: string) => void;
   openComments: (videoId: string) => void;
   closeComments: () => void;
   openShare: (videoId: string) => void;
   closeShare: () => void;
+
+  /** Toggle danmaku visibility */
+  toggleDanmaku: () => void;
+  /** Add a new danmaku to video */
+  addDanmaku: (videoId: string, text: string, color?: string) => void;
+
+  /** Record watch history */
+  recordWatchHistory: (videoId: string) => void;
+  /** Clear watch history */
+  clearWatchHistory: () => void;
+
+  /** Update user profile */
+  updateUserProfile: (updates: Partial<UserProfile>) => void;
 
   /** Send a direct chat message to a creator */
   sendChatMessage: (creatorId: string, text: string) => void;
@@ -84,6 +114,7 @@ export const useAppStore = create<AppState>()(
       muted: false,
       themeMode: 'dark',
       feedTab: 'recommended',
+      selectedCity: '北京',
       commentsVideoId: null,
       commentsOpen: false,
       shareVideoId: null,
@@ -91,6 +122,21 @@ export const useAppStore = create<AppState>()(
       chatMessages: INITIAL_MESSAGES,
       conversations: CONVERSATIONS,
       customComments: {},
+      danmakuEnabled: true,
+      danmakus: INITIAL_DANMAKUS,
+      historyVideos: [
+        { videoId: 'v1', watchedAt: Date.now() - 1000 * 60 * 15 },
+        { videoId: 'v4', watchedAt: Date.now() - 1000 * 60 * 45 },
+      ],
+      userProfile: {
+        name: CURRENT_USER.name,
+        handle: CURRENT_USER.handle,
+        bio: CURRENT_USER.bio,
+        avatar: CURRENT_USER.avatar,
+        gender: '保密',
+        birthday: '2000-08-18',
+        location: '北京·朝阳',
+      },
       installedVersion: '1.1.0',
       installedBuildNumber: 2,
 
@@ -132,11 +178,51 @@ export const useAppStore = create<AppState>()(
       toggleMute: () => set((state) => ({ muted: !state.muted })),
       setThemeMode: (themeMode) => set({ themeMode }),
       setFeedTab: (feedTab) => set({ feedTab }),
+      setSelectedCity: (selectedCity) => set({ selectedCity }),
 
       openComments: (videoId) => set({ commentsVideoId: videoId, commentsOpen: true }),
       closeComments: () => set({ commentsOpen: false }),
       openShare: (videoId) => set({ shareVideoId: videoId, shareOpen: true }),
       closeShare: () => set({ shareOpen: false }),
+
+      toggleDanmaku: () => set((state) => ({ danmakuEnabled: !state.danmakuEnabled })),
+
+      addDanmaku: (videoId, text, color = '#FFFFFF') =>
+        set((state) => {
+          const newDanmaku: DanmakuItem = {
+            id: `danmaku-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            videoId,
+            text,
+            color,
+            timeOffset: 0.5,
+            isSelf: true,
+          };
+          const existing = state.danmakus[videoId] ?? [];
+          return {
+            danmakus: {
+              ...state.danmakus,
+              [videoId]: [newDanmaku, ...existing],
+            },
+          };
+        }),
+
+      recordWatchHistory: (videoId) =>
+        set((state) => {
+          const filtered = state.historyVideos.filter((h) => h.videoId !== videoId);
+          return {
+            historyVideos: [{ videoId, watchedAt: Date.now() }, ...filtered].slice(0, 100),
+          };
+        }),
+
+      clearWatchHistory: () => set({ historyVideos: [] }),
+
+      updateUserProfile: (updates) =>
+        set((state) => ({
+          userProfile: {
+            ...state.userProfile,
+            ...updates,
+          },
+        })),
 
       sendChatMessage: (creatorId, text) =>
         set((state) => {
@@ -286,6 +372,10 @@ export const useAppStore = create<AppState>()(
         chatMessages: state.chatMessages,
         conversations: state.conversations,
         customComments: state.customComments,
+        danmakuEnabled: state.danmakuEnabled,
+        selectedCity: state.selectedCity,
+        historyVideos: state.historyVideos,
+        userProfile: state.userProfile,
       }),
     },
   ),

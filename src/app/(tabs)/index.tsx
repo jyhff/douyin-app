@@ -15,8 +15,7 @@ const STARTER_FEED_SIZE = 3;
 export default function HomeScreen() {
   const feedTab = useAppStore((state) => state.feedTab);
   const setFeedTab = useAppStore((state) => state.setFeedTab);
-  const muted = useAppStore((state) => state.muted);
-  const toggleMute = useAppStore((state) => state.toggleMute);
+  const selectedCity = useAppStore((state) => state.selectedCity);
   const followedCreators = useAppStore((state) => state.followedCreators);
 
   // `null` while loading and whenever the server is unreachable, in which case
@@ -27,14 +26,21 @@ export default function HomeScreen() {
     const pool = remoteVideos?.length ? remoteVideos : VIDEOS;
 
     if (feedTab === 'recommended') return pool;
+    if (feedTab === 'city') {
+      const cityFiltered = pool.filter((video) => video.city === selectedCity);
+      // If none for the specific city, show all videos with location info
+      return cityFiltered.length > 0
+        ? cityFiltered
+        : pool.filter((v) => Boolean(v.city || v.location));
+    }
     const followed = pool.filter((video) => followedCreators[video.creatorId]);
     // An empty 关注 tab would look broken, so fall back to a starter feed.
     return followed.length > 0 ? followed : pool.slice(0, STARTER_FEED_SIZE);
-  }, [feedTab, followedCreators, remoteVideos]);
+  }, [feedTab, followedCreators, remoteVideos, selectedCity]);
 
   return (
     <View style={styles.screen}>
-      <VideoFeed key={feedTab} videos={videos} />
+      <VideoFeed key={`${feedTab}-${selectedCity}`} videos={videos} />
       <FeedHeader
         tab={feedTab}
         onChangeTab={setFeedTab}

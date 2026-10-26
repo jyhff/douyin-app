@@ -24,6 +24,8 @@ import { ActionRail } from './ActionRail';
 import { CaptionBlock } from './CaptionBlock';
 import { HeartBurst } from './HeartBurst';
 import { VideoLayer } from './VideoLayer';
+import { VideoScrubber } from './VideoScrubber';
+import { DanmakuOverlay } from './DanmakuOverlay';
 import {
   VideoLongPressSheet,
   PlaybackRate,
@@ -70,6 +72,12 @@ export function VideoPage({
   const openComments = useAppStore((s) => s.openComments);
   const openShare = useAppStore((s) => s.openShare);
 
+  const danmakuEnabled = useAppStore((s) => s.danmakuEnabled);
+  const danmakus = useAppStore((s) => s.danmakus[video.id] ?? []);
+  const toggleDanmaku = useAppStore((s) => s.toggleDanmaku);
+  const addDanmaku = useAppStore((s) => s.addDanmaku);
+  const recordWatchHistory = useAppStore((s) => s.recordWatchHistory);
+
   const [ready, setReady] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -79,6 +87,13 @@ export function VideoPage({
   const [cleanMode, setCleanMode] = useState(false);
   const [tripleBurstVisible, setTripleBurstVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [seekTarget, setSeekTarget] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isActive) {
+      recordWatchHistory(video.id);
+    }
+  }, [isActive, video.id, recordWatchHistory]);
 
   const progress = useAnimatedValue(0);
   const burst = useAnimatedValue(0);
@@ -192,6 +207,8 @@ export function VideoPage({
           playbackRate={playbackRate}
           progress={progress}
           onReady={handleReady}
+          seekTarget={seekTarget}
+          onSeekComplete={() => setSeekTarget(null)}
         />
       ) : null}
 
@@ -203,6 +220,23 @@ export function VideoPage({
         accessibilityRole="button"
         accessibilityLabel={`${creator.name} 的视频，${video.caption}`}
       />
+
+      {/* 弹幕浮层与输入 */}
+      {!cleanMode ? (
+        <DanmakuOverlay
+          danmakus={danmakus}
+          enabled={danmakuEnabled}
+          isActive={isActive && !paused}
+          onSendDanmaku={(text, color) => {
+            addDanmaku(video.id, text, color);
+            showToast('弹幕已发送 🚀');
+          }}
+          onToggleEnabled={() => {
+            toggleDanmaku();
+            showToast(!danmakuEnabled ? '弹幕已开启' : '弹幕已关闭');
+          }}
+        />
+      ) : null}
 
       {paused && !cleanMode ? (
         <View style={styles.pauseIndicator} pointerEvents="none">
@@ -245,19 +279,15 @@ export function VideoPage({
             onFollow={() => toggleFollow(video.creatorId)}
           />
 
-          <View style={[styles.progressTrack, { bottom: tabBarHeight }]} pointerEvents="none">
-            <Animated.View
-              style={[
-                styles.progressFill,
-                {
-                  width: progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '100%'],
-                  }),
-                },
-              ]}
-            />
-          </View>
+          {/* 交互式进度条（支持触摸拖动、快进快退及时间轴气泡显示） */}
+          <VideoScrubber
+            progress={progress}
+            durationSeconds={video.durationSeconds}
+            bottomOffset={tabBarHeight}
+            onSeek={(target) => {
+              setSeekTarget(target);
+            }}
+          />
         </>
       ) : (
         /* 清屏模式顶部浮动提示 */

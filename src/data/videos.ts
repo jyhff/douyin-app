@@ -16,6 +16,8 @@ export const VIDEOS: Video[] = [
     durationSeconds: 8,
     metrics: { likes: 128_400, comments: 2_431, favorites: 18_920, shares: 6_742 },
     location: '上海·外滩',
+    city: '上海',
+    distance: '距您 1.2km',
   },
   {
     id: 'v2',
@@ -28,6 +30,8 @@ export const VIDEOS: Video[] = [
     durationSeconds: 8,
     metrics: { likes: 342_800, comments: 8_164, favorites: 92_310, shares: 21_530 },
     location: '青岛·石老人',
+    city: '青岛',
+    distance: '距您 4.8km',
   },
   {
     id: 'v3',
@@ -39,6 +43,9 @@ export const VIDEOS: Video[] = [
     thumbnail: require('../../assets/thumbs/v3.jpg'),
     durationSeconds: 8,
     metrics: { likes: 76_520, comments: 1_893, favorites: 24_070, shares: 4_118 },
+    location: '北京·三里屯太古里',
+    city: '北京',
+    distance: '距您 800m',
   },
   {
     id: 'v4',
@@ -50,7 +57,9 @@ export const VIDEOS: Video[] = [
     thumbnail: require('../../assets/thumbs/v4.jpg'),
     durationSeconds: 8,
     metrics: { likes: 892_300, comments: 15_720, favorites: 143_600, shares: 52_940 },
-    location: '家',
+    location: '北京·朝阳公园',
+    city: '北京',
+    distance: '距您 2.5km',
   },
   {
     id: 'v5',
@@ -62,6 +71,9 @@ export const VIDEOS: Video[] = [
     thumbnail: require('../../assets/thumbs/v5.jpg'),
     durationSeconds: 8,
     metrics: { likes: 214_700, comments: 6_308, favorites: 88_450, shares: 19_260 },
+    location: '北京·国贸CBD',
+    city: '北京',
+    distance: '距您 3.1km',
   },
   {
     id: 'v6',
@@ -73,7 +85,9 @@ export const VIDEOS: Video[] = [
     thumbnail: require('../../assets/thumbs/v6.jpg'),
     durationSeconds: 8,
     metrics: { likes: 158_900, comments: 4_762, favorites: 61_230, shares: 12_840 },
-    location: '深圳·南山',
+    location: '深圳·南山科技园',
+    city: '深圳',
+    distance: '距您 1.6km',
   },
   {
     id: 'v7',
@@ -85,7 +99,9 @@ export const VIDEOS: Video[] = [
     thumbnail: require('../../assets/thumbs/v7.jpg'),
     durationSeconds: 8,
     metrics: { likes: 476_100, comments: 11_240, favorites: 105_800, shares: 38_620 },
-    location: '成都·玉林',
+    location: '成都·玉林路',
+    city: '成都',
+    distance: '距您 950m',
   },
   {
     id: 'v8',
@@ -97,7 +113,9 @@ export const VIDEOS: Video[] = [
     thumbnail: require('../../assets/thumbs/v8.jpg'),
     durationSeconds: 8,
     metrics: { likes: 93_640, comments: 2_915, favorites: 33_470, shares: 8_106 },
-    location: '大理·洱海',
+    location: '大理·洱海生态廊道',
+    city: '大理',
+    distance: '距您 6.2km',
   },
 ];
 
